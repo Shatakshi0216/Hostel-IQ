@@ -30,15 +30,18 @@ app.use('/api/allocation', allocationRoutes);
 app.use('/api/matching', matchingRoutes);
 app.use('/api/complaints', complaintRoutes);
 
-// Serve static assets in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../frontend/dist')));
+const fs = require('fs');
+const frontendDistPath = path.join(__dirname, '../frontend/dist');
+
+// Serve static assets in production if they exist
+if (process.env.NODE_ENV === 'production' && fs.existsSync(frontendDistPath)) {
+  app.use(express.static(frontendDistPath));
 
   app.get('*', (req, res) => {
-    res.sendFile(path.resolve(__dirname, '../frontend', 'dist', 'index.html'));
+    res.sendFile(path.resolve(frontendDistPath, 'index.html'));
   });
 } else {
-  // Base route for development
+  // Base route for development or split deployment backend
   app.get('/', (req, res) => {
     res.send('HostelIQ Smart Allocation API is running...');
   });

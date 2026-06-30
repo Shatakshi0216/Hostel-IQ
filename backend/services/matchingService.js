@@ -29,54 +29,69 @@ const getConflictRisk = async (userId) => {
 const calculateCompatibilityScore = (profA, profB) => {
   if (!profA || !profB) return 50; // Fallback default
 
+  const sleepA = profA.sleepSchedule || 'flexible';
+  const sleepB = profB.sleepSchedule || 'flexible';
+  const wakeA = profA.wakeTime || 'moderate';
+  const wakeB = profB.wakeTime || 'moderate';
+  const cleanA = profA.cleanlinessRating !== undefined ? profA.cleanlinessRating : 3;
+  const cleanB = profB.cleanlinessRating !== undefined ? profB.cleanlinessRating : 3;
+  const studyA = profA.studyHabit || 'flexible';
+  const studyB = profB.studyHabit || 'flexible';
+  const ieA = profA.introvertExtrovertScale !== undefined ? profA.introvertExtrovertScale : 3;
+  const ieB = profB.introvertExtrovertScale !== undefined ? profB.introvertExtrovertScale : 3;
+  const gameA = profA.gamingHabit || 'none';
+  const gameB = profB.gamingHabit || 'none';
+  const musicA = profA.musicPreference || 'headphones';
+  const musicB = profB.musicPreference || 'headphones';
+
   let score = 0;
 
   // 1. Sleep Schedule (Max 20 points)
-  if (profA.sleepSchedule === profB.sleepSchedule) {
+  if (sleepA === sleepB) {
     score += 20;
-  } else if (profA.sleepSchedule === 'flexible' || profB.sleepSchedule === 'flexible') {
+  } else if (sleepA === 'flexible' || sleepB === 'flexible') {
     score += 15;
   }
 
   // 2. Wake Time (Max 20 points)
-  if (profA.wakeTime === profB.wakeTime) {
+  if (wakeA === wakeB) {
     score += 20;
   } else {
-    const isAdjacent = (profA.wakeTime === 'early' && profB.wakeTime === 'moderate') ||
-                      (profA.wakeTime === 'moderate' && profB.wakeTime === 'early') ||
-                      (profA.wakeTime === 'moderate' && profB.wakeTime === 'late') ||
-                      (profA.wakeTime === 'late' && profB.wakeTime === 'moderate');
+    const isAdjacent = (wakeA === 'early' && wakeB === 'moderate') ||
+                      (wakeA === 'moderate' && wakeB === 'early') ||
+                      (wakeA === 'moderate' && wakeB === 'late') ||
+                      (wakeA === 'late' && wakeB === 'moderate');
     if (isAdjacent) {
       score += 15;
     }
   }
 
   // 3. Cleanliness Rating 1-5 (Max 20 points)
-  const cleanDiff = Math.abs(profA.cleanlinessRating - profB.cleanlinessRating);
+  const cleanDiff = Math.abs(cleanA - cleanB);
   score += Math.max(0, 20 - 5 * cleanDiff);
 
   // 4. Study Habit (Max 10 points)
-  if (profA.studyHabit === profB.studyHabit) {
+  if (studyA === studyB) {
     score += 10;
-  } else if (profA.studyHabit === 'flexible' || profB.studyHabit === 'flexible') {
+  } else if (studyA === 'flexible' || studyB === 'flexible') {
     score += 5;
   }
 
   // 5. Introvert/Extrovert Scale 1-5 (Max 10 points)
-  const ieDiff = Math.abs(profA.introvertExtrovertScale - profB.introvertExtrovertScale);
+  const ieDiff = Math.abs(ieA - ieB);
   score += Math.max(0, 10 - 2.5 * ieDiff);
 
   // 6. Gaming Habit (Max 10 points)
-  if (profA.gamingHabit === profB.gamingHabit) {
+  if (gameA === gameB) {
     score += 10;
-  } else if (profA.gamingHabit === 'casual' || profB.gamingHabit === 'casual') {
+  } else if (gameA === 'casual' || gameB === 'casual') {
     score += 5;
   }
 
   // 7. Music Preference (Max 10 points)
-  if (profA.musicPreference === profB.musicPreference) {
+  if (musicA === musicB) {
     score += 10;
-  } else if (profA.musicPreference !== 'speakers' && profB.musicPreference !== 'speakers') {
+  } else if (musicA !== 'speakers' && musicB !== 'speakers') {
     score += 5;
   }
 
@@ -94,8 +109,13 @@ const getTargetCapacity = (year) => {
  * Runs Graph-Based Roommate Matching & Room Allocation with Year Constraints
  */
 const runRoommateAllocation = async () => {
+  // Reset room and roommate assignments first (Must run BEFORE querying documents into memory)
+  await Room.updateMany({}, { currentOccupants: [] });
+  await StudentProfile.updateMany({ status: 'Allocated' }, { allocatedRoomId: null });
+
   // 1. Fetch all allocated students and pre-calculate conflict risks
-  const students = await StudentProfile.find({ status: 'Allocated' }).populate('userId');
+  const allStudents = await StudentProfile.find({ status: 'Allocated' }).populate('userId');
+  const students = allStudents.filter(s => s.userId);
   const studentRisks = {};
   
   for (let student of students) {
@@ -105,14 +125,13 @@ const runRoommateAllocation = async () => {
 
   // Fetch all rooms
   const rooms = await Room.find();
-  await Room.updateMany({}, { currentOccupants: [] }); // Reset room occupants
-  await StudentProfile.updateMany({ status: 'Allocated' }, { allocatedRoomId: null });
 
   let totalMatched = 0;
 
   // Group students by allocated hostel
   const hostelGroups = {};
   students.forEach(student => {
+    if (!student.allocatedHostelId) return;
     const hId = student.allocatedHostelId.toString();
     if (!hostelGroups[hId]) hostelGroups[hId] = [];
     hostelGroups[hId].push(student);
@@ -180,8 +199,8 @@ const runRoommateAllocation = async () => {
           ]
         });
 
-        const isAHighRisk = studentRisks[idA].category === 'High Risk';
-        const isBHighRisk = studentRisks[idB].category === 'High Risk';
+        const isAHighRisk = studentRisks[idA] && studentRisks[idA].category === 'High Risk';
+        const isBHighRisk = studentRisks[idB] && studentRisks[idB].category === 'High Risk';
 
         if (hasDirectConflict || (isAHighRisk && isBHighRisk)) {
           continue;
@@ -190,8 +209,8 @@ const runRoommateAllocation = async () => {
         // Roommate preferences
         const prefA = studentA.preferredRoommates || [];
         const prefB = studentB.preferredRoommates || [];
-        const aPrefersB = prefA.map(id => id.toString()).includes(idB);
-        const bPrefersA = prefB.map(id => id.toString()).includes(idA);
+        const aPrefersB = prefA.map(id => id ? id.toString() : '').filter(Boolean).includes(idB);
+        const bPrefersA = prefB.map(id => id ? id.toString() : '').filter(Boolean).includes(idA);
 
         let weight = comp;
         if (aPrefersB && bPrefersA) weight += 50;
@@ -286,7 +305,9 @@ const runRoommateAllocation = async () => {
                 { reporterId: occupantId, accusedId: student.userId._id }
               ]
             });
-            if (complaint || (studentRisks[student.userId._id.toString()].category === 'High Risk' && studentRisks[occupantId.toString()]?.category === 'High Risk')) {
+            const isStudentHighRisk = studentRisks[student.userId._id.toString()] && studentRisks[student.userId._id.toString()].category === 'High Risk';
+            const isOccupantHighRisk = studentRisks[occupantId.toString()] && studentRisks[occupantId.toString()].category === 'High Risk';
+            if (complaint || (isStudentHighRisk && isOccupantHighRisk)) {
               hasConflict = true;
               break;
             }
@@ -332,8 +353,8 @@ const runRoommateAllocation = async () => {
           ]
         });
 
-        const isAHighRisk = studentRisks[idA].category === 'High Risk';
-        const isBHighRisk = studentRisks[idB].category === 'High Risk';
+        const isAHighRisk = studentRisks[idA] && studentRisks[idA].category === 'High Risk';
+        const isBHighRisk = studentRisks[idB] && studentRisks[idB].category === 'High Risk';
 
         if (hasDirectConflict || (isAHighRisk && isBHighRisk)) {
           continue;
@@ -341,8 +362,8 @@ const runRoommateAllocation = async () => {
 
         const prefA = studentA.preferredRoommates || [];
         const prefB = studentB.preferredRoommates || [];
-        const aPrefersB = prefA.map(id => id.toString()).includes(idB);
-        const bPrefersA = prefB.map(id => id.toString()).includes(idA);
+        const aPrefersB = prefA.map(id => id ? id.toString() : '').filter(Boolean).includes(idB);
+        const bPrefersA = prefB.map(id => id ? id.toString() : '').filter(Boolean).includes(idA);
 
         let weight = comp;
         if (aPrefersB && bPrefersA) weight += 50;
@@ -436,7 +457,9 @@ const runRoommateAllocation = async () => {
                 { reporterId: occupantId, accusedId: student.userId._id }
               ]
             });
-            if (complaint || (studentRisks[student.userId._id.toString()].category === 'High Risk' && studentRisks[occupantId.toString()]?.category === 'High Risk')) {
+            const isStudentHighRisk = studentRisks[student.userId._id.toString()] && studentRisks[student.userId._id.toString()].category === 'High Risk';
+            const isOccupantHighRisk = studentRisks[occupantId.toString()] && studentRisks[occupantId.toString()].category === 'High Risk';
+            if (complaint || (isStudentHighRisk && isOccupantHighRisk)) {
               hasConflict = true;
               break;
             }

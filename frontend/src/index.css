@@ -4,12 +4,12 @@
 
 @layer base {
   body {
-    @apply bg-brand-bg text-brand-slate font-sans antialiased;
+    @apply bg-brand-bg text-brand-dark font-sans antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 }
 
-/* Custom Scrollbar for Vercel/Linear aesthetic */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -23,29 +23,29 @@
   @apply bg-slate-300 rounded-full hover:bg-slate-400;
 }
 
-/* Card glassmorphism or sleek shadows */
+/* Premium Card */
 .premium-card {
-  @apply bg-white rounded-xl border border-slate-100 shadow-sm transition-all duration-200;
+  @apply bg-white border border-slate-200/80 rounded-xl shadow-sm transition-all duration-200;
 }
 
 .premium-card:hover {
-  @apply border-slate-200 shadow-md;
+  @apply border-slate-300 shadow-md;
 }
 
-/* Custom Input Focus states */
+/* Custom Input */
 .premium-input {
-  @apply w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm transition-all duration-150 outline-none;
+  @apply w-full px-3 py-2.5 bg-slate-50/50 border border-slate-200 rounded-lg text-sm transition-all duration-150 outline-none text-slate-800 placeholder-slate-400;
 }
 
 .premium-input:focus {
-  @apply border-brand-teal ring-2 ring-brand-teal/10;
+  @apply border-brand-teal ring-2 ring-brand-teal/10 bg-white;
 }
 
 /* Buttons */
 .btn-primary {
-  @apply px-4 py-2 bg-brand-teal text-white hover:bg-brand-tealHover rounded-lg text-sm font-medium transition-all duration-150 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply px-4 py-2.5 bg-gradient-to-r from-brand-teal to-blue-600 text-white hover:brightness-105 rounded-lg text-sm font-semibold transition-all duration-150 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
 }
 
 .btn-secondary {
-  @apply px-4 py-2 bg-white text-brand-slate hover:bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply px-4 py-2.5 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
 }

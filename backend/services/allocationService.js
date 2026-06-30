@@ -57,6 +57,10 @@ const calculateStudentScore = (student, rules) => {
  * Runs the Hostel Allocation Engine
  */
 const runHostelAllocation = async () => {
+  // Reset current allocations for a fresh run (Must run BEFORE querying documents into memory)
+  await StudentProfile.updateMany({}, { allocatedHostelId: null, allocatedRoomId: null, status: 'Unallocated', waitlistPosition: null });
+  await Room.updateMany({}, { currentOccupants: [] });
+
   // 1. Fetch active rules
   let rules = await AllocationRule.find({ isActive: true });
   if (rules.length === 0) {
@@ -70,7 +74,8 @@ const runHostelAllocation = async () => {
   }
 
   // 2. Get all students and calculate priority scores
-  const students = await StudentProfile.find().populate('userId');
+  const allStudents = await StudentProfile.find().populate('userId');
+  const students = allStudents.filter(s => s.userId);
   
   for (let student of students) {
     student.priorityScore = calculateStudentScore(student, rules);
@@ -84,13 +89,15 @@ const runHostelAllocation = async () => {
   // Map hostel capacity based on rooms
   const hostelCapacities = {};
   for (let hostel of hostels) {
-    const hostelRooms = rooms.filter(r => r.hostelId.toString() === hostel._id.toString());
+    const hostelRooms = rooms.filter(r => r.hostelId && r.hostelId.toString() === hostel._id.toString());
     const totalCap = hostelRooms.reduce((sum, r) => sum + r.capacity, 0);
     
     hostelCapacities[hostel._id.toString()] = {
       _id: hostel._id,
       name: hostel.name,
       genderRestriction: hostel.genderRestriction,
+      minCgpa: hostel.minCgpa || 0.0,
+      allowedYear: hostel.allowedYear,
       totalCapacity: totalCap > 0 ? totalCap : hostel.totalCapacity,
       allocatedCount: 0
     };
@@ -116,23 +123,20 @@ const runHostelAllocation = async () => {
   const waitlists = [];
   const allocations = [];
 
-  // Reset current allocations for a fresh run
-  await StudentProfile.updateMany({}, { allocatedHostelId: null, allocatedRoomId: null, status: 'Unallocated', waitlistPosition: null });
-  await Room.updateMany({}, { currentOccupants: [] });
-
   // 5. Allocate students to Hostels based on capacity and gender
   for (let student of sortedStudents) {
-    // Check gender: Student is Female unless name check says otherwise
-    const isFemale = /priya|neha|sita|rita|female|girl|ananya|pooja|sneha/i.test(student.userId.name);
-    const studentGender = isFemale ? 'Girls' : 'Boys';
+    // Check gender using the student's explicit gender field
+    const studentGender = student.gender === 'Female' ? 'Girls' : 'Boys';
 
     // Find eligible hostel with space
     let allocatedHostel = null;
     for (let hostelId in hostelCapacities) {
       const hostel = hostelCapacities[hostelId];
       const genderMatches = hostel.genderRestriction === 'Co-ed' || hostel.genderRestriction === studentGender;
+      const cgpaMatches = student.cgpa >= hostel.minCgpa;
+      const yearMatches = student.academicYear === hostel.allowedYear;
       
-      if (genderMatches && hostel.allocatedCount < hostel.totalCapacity) {
+      if (genderMatches && cgpaMatches && yearMatches && hostel.allocatedCount < hostel.totalCapacity) {
         allocatedHostel = hostel;
         break;
       }

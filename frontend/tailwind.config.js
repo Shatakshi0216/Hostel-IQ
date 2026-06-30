@@ -8,20 +8,22 @@ export default {
     extend: {
       colors: {
         brand: {
-          dark: '#0F172A',      // Deep Slate (Primary)
-          slate: '#1E293B',     // Secondary Slate
-          teal: '#14B8A6',      // Teal Accent
-          tealHover: '#0D9488', // Teal Darker
-          tealLight: '#E6F8F6', // Very Light Teal for badges
-          bg: '#F8FAFC',        // Slate Gray Tint Background
-          success: '#22C55E',   // Success Green
-          warning: '#F59E0B',   // Warning Orange
-          card: '#FFFFFF',      // White Cards
+          dark: '#0F172A',       // Slate 900 (Main headings)
+          card: '#FFFFFF',       // Clean White Cards
+          border: '#E2E8F0',     // Light border slate
+          slate: '#475569',      // Slate 600 (Secondary text)
+          teal: '#0EA5E9',       // Clean Sky Blue Accent
+          tealHover: '#0284C7',  // Sky Blue hover
+          tealLight: '#F0F9FF',  // Sky Blue light tint
+          bg: '#F8FAFC',         // Off-White Background
+          success: '#10B981',    // Emerald Green
+          warning: '#F59E0B',    // Amber
+          danger: '#EF4444',     // Red
         }
       },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
-      },
+      }
     },
   },
   plugins: [],

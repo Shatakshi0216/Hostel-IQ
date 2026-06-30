@@ -48,7 +48,6 @@ const StudentPreferences = () => {
 
   // Filter and search autocomplete candidates
   useEffect(() => {
-    // If no filter or search has been set, clear results list
     if (!searchQuery.trim() && filterBranch === 'All' && filterBatch === 'All' && minCgpa === 0) {
       setSearchResults([]);
       return;
@@ -130,17 +129,17 @@ const StudentPreferences = () => {
   }
 
   return (
-    <div className="flex h-screen bg-brand-bg overflow-hidden">
+    <div className="flex h-screen bg-brand-bg overflow-hidden text-slate-800">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header title="Roommate Choices" />
 
-        <main className="flex-1 overflow-y-auto p-8">
+        <main className="flex-1 overflow-y-auto p-8 bg-slate-50">
           {message.text && (
             <div className={`mb-6 p-4 rounded-xl text-sm border flex items-center gap-3 ${
               message.type === 'success' 
-                ? 'bg-emerald-50 border-emerald-100 text-emerald-700' 
-                : 'bg-rose-50 border-rose-100 text-rose-700'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
+                : 'bg-rose-50 border-rose-200 text-rose-700'
             }`}>
               {message.type === 'success' ? <CheckCircle className="w-5 h-5 shrink-0" /> : <AlertTriangle className="w-5 h-5 shrink-0" />}
               <span>{message.text}</span>
@@ -148,24 +147,24 @@ const StudentPreferences = () => {
           )}
 
           <div className="premium-card p-6 max-w-3xl">
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex items-center gap-2.5 mb-4">
               <Users className="w-5 h-5 text-brand-teal" />
-              <h4 className="text-sm font-semibold text-brand-dark">Preferred Roommate Choices</h4>
+              <h4 className="text-sm font-bold text-slate-800">Preferred Roommate Choices</h4>
             </div>
-            <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+            <p className="text-xs text-slate-500 mb-6 leading-relaxed">
               Add up to 5 preferred roommates. If choices are mutual, the graph matching algorithm assigns highest priority edge weights.
               <br />
               <strong className="text-brand-teal font-semibold">Note:</strong> Preferred roommates should be allocated to the same hostel building (same gender) for pairing to occur.
             </p>
 
             {/* Filter Bar */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4 bg-slate-50 p-4 border border-slate-100 rounded-lg">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5 bg-slate-100/50 p-4 border border-slate-200 rounded-xl">
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Branch</label>
+                <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Branch</label>
                 <select
                   value={filterBranch}
                   onChange={(e) => setFilterBranch(e.target.value)}
-                  className="premium-input py-1.5 text-xs bg-white"
+                  className="premium-input py-1.5 text-xs bg-white text-slate-800 cursor-pointer"
                 >
                   <option value="All">All Branches</option>
                   <option value="CSE">CSE</option>
@@ -175,11 +174,11 @@ const StudentPreferences = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Batch</label>
+                <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Batch</label>
                 <select
                   value={filterBatch}
                   onChange={(e) => setFilterBatch(e.target.value)}
-                  className="premium-input py-1.5 text-xs bg-white"
+                  className="premium-input py-1.5 text-xs bg-white text-slate-800 cursor-pointer"
                 >
                   <option value="All">All Batches</option>
                   <option value="2020">2020</option>
@@ -190,7 +189,7 @@ const StudentPreferences = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Min CGPA ({minCgpa})</label>
+                <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Min CGPA ({minCgpa})</label>
                 <input
                   type="range"
                   min="0"
@@ -198,7 +197,7 @@ const StudentPreferences = () => {
                   step="0.5"
                   value={minCgpa}
                   onChange={(e) => setMinCgpa(Number(e.target.value))}
-                  className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-teal mt-2"
+                  className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-teal mt-3.5"
                 />
               </div>
             </div>
@@ -219,7 +218,7 @@ const StudentPreferences = () => {
               
               {/* Search dropdown */}
               {searchResults.length > 0 && (
-                <ul className="absolute z-10 w-full bg-white border border-slate-200 mt-1.5 rounded-lg shadow-lg divide-y divide-slate-100 overflow-y-auto max-h-60">
+                <ul className="absolute z-20 w-full bg-white border border-slate-200 mt-2 rounded-xl shadow-lg divide-y divide-slate-100 overflow-y-auto max-h-60">
                   {searchResults.map(student => {
                     const cgpaDiff = Math.abs(ownCgpa - student.cgpa);
                     const isWarning = cgpaDiff >= 2.0;
@@ -227,16 +226,16 @@ const StudentPreferences = () => {
                       <li 
                         key={student._id}
                         onClick={() => handleAddPreference(student)}
-                        className="px-4 py-3 hover:bg-slate-50 cursor-pointer flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs transition"
+                        className="px-4 py-3.5 hover:bg-slate-50 cursor-pointer flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 text-xs transition"
                       >
                         <div>
-                          <span className="font-semibold text-brand-dark block">{student.name}</span>
-                          <span className="text-[10px] text-slate-400 block">{student.email}</span>
-                          <div className="flex gap-2 mt-1">
-                            <span className="text-[9px] text-slate-500 font-semibold bg-slate-100 px-1.5 py-0.5 rounded">
+                          <span className="font-bold text-slate-800 block">{student.name}</span>
+                          <span className="text-[10px] text-slate-400 block mt-0.5">{student.email}</span>
+                          <div className="flex gap-2 mt-1.5">
+                            <span className="text-[9px] text-slate-500 font-semibold bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded">
                               {student.branch} — Batch {student.batch}
                             </span>
-                            <span className="text-[9px] text-slate-500 font-semibold bg-slate-100 px-1.5 py-0.5 rounded">
+                            <span className="text-[9px] text-slate-500 font-semibold bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded">
                               Region: {student.region}
                             </span>
                           </div>
@@ -244,11 +243,11 @@ const StudentPreferences = () => {
                         
                         <div className="flex items-center gap-3">
                           {isWarning ? (
-                            <span className="px-2 py-0.5 bg-rose-50 border border-rose-100 rounded text-[9px] font-bold text-rose-600 flex items-center gap-1">
+                            <span className="px-2 py-0.5 bg-rose-50 border border-rose-200 rounded text-[9px] font-bold text-rose-600 flex items-center gap-1">
                               ⚠️ Merit warning (CGPA: {student.cgpa})
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 bg-emerald-50 border border-emerald-100 rounded text-[9px] font-bold text-emerald-600">
+                            <span className="px-2 py-0.5 bg-emerald-55 border border-emerald-200 rounded text-[9px] font-bold text-emerald-700">
                               ✅ Eligible (CGPA: {student.cgpa})
                             </span>
                           )}
@@ -263,22 +262,22 @@ const StudentPreferences = () => {
 
             {/* Selections list */}
             <div className="space-y-4">
-              <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Priority Preference List</h5>
+              <h5 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Priority Preference List</h5>
               
               {selectedPreferences.map((pref, index) => (
-                <div key={pref._id} className="flex flex-col p-4 border border-slate-100 rounded-lg bg-slate-50/50 space-y-3 hover:border-slate-200 transition">
+                <div key={pref._id} className="flex flex-col p-4 border border-slate-200 rounded-xl bg-slate-55/30 space-y-3 hover:border-slate-300 transition-all duration-150">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <span className="text-xs font-bold text-slate-400">#{index + 1}</span>
                       <div>
-                        <span className="text-xs font-semibold text-brand-dark block">{pref.name}</span>
-                        <span className="text-[10px] text-slate-400">{pref.email}</span>
+                        <span className="text-xs font-bold text-slate-800 block">{pref.name}</span>
+                        <span className="text-[10px] text-slate-500 block mt-0.5">{pref.email}</span>
                       </div>
                     </div>
 
                     <button
                       onClick={() => handleRemovePreference(pref._id)}
-                      className="p-1 rounded text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition cursor-pointer"
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -286,16 +285,16 @@ const StudentPreferences = () => {
 
                   {/* Eligibility Alert Banner */}
                   {pref.eligibilityWarning && (
-                    <div className="p-3 bg-amber-50 border border-brand-warning/10 rounded-lg text-brand-warning text-[10px] flex items-center gap-2">
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-[10px] flex items-center gap-2.5">
                       <AlertCircle className="w-4 h-4 shrink-0" />
-                      <span>{pref.eligibilityWarning}</span>
+                      <span className="font-semibold">{pref.eligibilityWarning}</span>
                     </div>
                   )}
                 </div>
               ))}
 
               {selectedPreferences.length === 0 && (
-                <div className="text-xs text-slate-400 text-center py-8 border border-dashed border-slate-200 rounded-lg bg-slate-50/50">
+                <div className="text-xs text-slate-400 text-center py-10 border border-dashed border-slate-200 rounded-xl bg-slate-50/20 font-medium">
                   No roommate choices selected. Search and select above to start.
                 </div>
               )}

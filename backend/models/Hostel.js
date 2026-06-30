@@ -18,6 +18,17 @@ const hostelSchema = new mongoose.Schema(
       required: true,
       min: 1,
     },
+    minCgpa: {
+      type: Number,
+      default: 0.0,
+      min: 0.0,
+      max: 10.0,
+    },
+    allowedYear: {
+      type: Number,
+      enum: [1, 2, 3, 4],
+      required: true,
+    },
   },
   {
     timestamps: true,

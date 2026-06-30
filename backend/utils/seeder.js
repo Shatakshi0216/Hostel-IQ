@@ -7,6 +7,10 @@ const Room = require('../models/Room');
 const AllocationRule = require('../models/AllocationRule');
 const Complaint = require('../models/Complaint');
 
+// Import allocation service functions to run them dynamically
+const { runHostelAllocation } = require('../services/allocationService');
+const { runRoommateAllocation } = require('../services/matchingService');
+
 const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/hosteliq');
@@ -38,22 +42,57 @@ const seedData = async () => {
     ]);
     console.log('Allocation rules seeded.');
 
-    // 3. Seed Hostels
-    const tagoreHall = await Hostel.create({
-      name: 'Tagore Hall',
-      genderRestriction: 'Boys',
-      totalCapacity: 12,
-    });
+    // 3. Seed Hostels (10 Boys, 5 Girls with academic year rules)
+    const boysHostels = [];
+    for (let i = 1; i <= 10; i++) {
+      let allowedYear = 1;
+      let totalCapacity = 360; // 120 rooms * 3
+      if (i > 3 && i <= 6) {
+        allowedYear = 2;
+        totalCapacity = 240; // 120 rooms * 2
+      } else if (i > 6 && i <= 8) {
+        allowedYear = 3;
+        totalCapacity = 240; // 120 rooms * 2
+      } else if (i > 8) {
+        allowedYear = 4;
+        totalCapacity = 120; // 120 rooms * 1
+      }
 
-    const sarojiniHall = await Hostel.create({
-      name: 'Sarojini Hall',
-      genderRestriction: 'Girls',
-      totalCapacity: 12,
-    });
-    console.log('Hostels seeded (Tagore Hall - Boys, Sarojini Hall - Girls).');
+      const h = await Hostel.create({
+        name: `B${i}`,
+        genderRestriction: 'Boys',
+        totalCapacity,
+        allowedYear
+      });
+      boysHostels.push(h);
+    }
+
+    const girlsHostels = [];
+    for (let i = 1; i <= 5; i++) {
+      let allowedYear = 1;
+      let totalCapacity = 360; // 120 rooms * 3
+      if (i === 3) {
+        allowedYear = 2;
+        totalCapacity = 240; // 120 rooms * 2
+      } else if (i === 4) {
+        allowedYear = 3;
+        totalCapacity = 240; // 120 rooms * 2
+      } else if (i === 5) {
+        allowedYear = 4;
+        totalCapacity = 120; // 120 rooms * 1
+      }
+
+      const h = await Hostel.create({
+        name: `G${i}`,
+        genderRestriction: 'Girls',
+        totalCapacity,
+        allowedYear
+      });
+      girlsHostels.push(h);
+    }
+    console.log('Hostels seeded with year-restriction configs.');
 
     // 4. Seed Admin & Warden Users
-    // Global Super Admin (Council of Wardens)
     const admin = await User.create({
       name: 'Super Administrator',
       email: 'admin@hosteliq.com',
@@ -61,160 +100,213 @@ const seedData = async () => {
       role: 'SuperAdmin',
     });
 
-    // Warden for Tagore Hall (Boys)
-    const tagoreWarden = await User.create({
-      name: 'Warden Tagore',
-      email: 'warden_tagore@hosteliq.com',
-      password: 'warden123',
-      role: 'HostelAdmin',
-      managedHostelId: tagoreHall._id
+    // Seed Warden for each Boys Hostel (B1-B10)
+    for (let i = 0; i < boysHostels.length; i++) {
+      const hostel = boysHostels[i];
+      await User.create({
+        name: `Warden ${hostel.name}`,
+        email: `warden_${hostel.name.toLowerCase()}@hosteliq.com`,
+        password: `warden_${hostel.name.toLowerCase()}`,
+        role: 'HostelAdmin',
+        managedHostelId: hostel._id
+      });
+    }
+
+    // Seed Warden for each Girls Hostel (G1-G5)
+    for (let i = 0; i < girlsHostels.length; i++) {
+      const hostel = girlsHostels[i];
+      await User.create({
+        name: `Warden ${hostel.name}`,
+        email: `warden_${hostel.name.toLowerCase()}@hosteliq.com`,
+        password: `warden_${hostel.name.toLowerCase()}`,
+        role: 'HostelAdmin',
+        managedHostelId: hostel._id
+      });
+    }
+
+    console.log('Admin & Wardens seeded (admin@hosteliq.com, warden_b1-b10, warden_g1-g5).');
+
+    // 5. Seed Rooms dynamically (4 floors, 30 rooms per floor = 120 rooms per hostel)
+    const roomsToCreate = [];
+    const allHostels = [...boysHostels, ...girlsHostels];
+
+    allHostels.forEach((hostel) => {
+      const blockName = hostel.genderRestriction === 'Boys' ? 'Block A' : 'Block B';
+      
+      // Bed configuration per year:
+      // Year 1 -> 3 beds
+      // Year 2 & 3 -> 2 beds
+      // Year 4 -> 1 bed (single)
+      let capacity = 2;
+      if (hostel.allowedYear === 1) capacity = 3;
+      else if (hostel.allowedYear === 4) capacity = 1;
+
+      for (let floorNum = 1; floorNum <= 4; floorNum++) {
+        for (let roomIdx = 1; roomIdx <= 30; roomIdx++) {
+          const roomNumber = `${floorNum}${roomIdx < 10 ? '0' + roomIdx : roomIdx}`;
+          
+          roomsToCreate.push({
+            hostelId: hostel._id,
+            block: blockName,
+            floor: floorNum,
+            roomNumber,
+            capacity
+          });
+        }
+      }
     });
 
-    // Warden for Sarojini Hall (Girls)
-    const sarojiniWarden = await User.create({
-      name: 'Warden Sarojini',
-      email: 'warden_sarojini@hosteliq.com',
-      password: 'warden123',
-      role: 'HostelAdmin',
-      managedHostelId: sarojiniHall._id
-    });
-
-    console.log('Admin & Wardens seeded (admin@hosteliq.com, warden_tagore@hosteliq.com, warden_sarojini@hosteliq.com).');
-
-    // 5. Seed Rooms with year-dependent capacities (1, 2, 3)
-    const roomsToCreate = [
-      // Tagore Hall (Boys) - Block A. Total capacity = 12
-      { hostelId: tagoreHall._id, block: 'Block A', floor: 1, roomNumber: '101', capacity: 1 }, // 4th years
-      { hostelId: tagoreHall._id, block: 'Block A', floor: 1, roomNumber: '102', capacity: 1 }, // 4th years
-      { hostelId: tagoreHall._id, block: 'Block A', floor: 1, roomNumber: '103', capacity: 2 }, // 2nd/3rd years
-      { hostelId: tagoreHall._id, block: 'Block A', floor: 1, roomNumber: '104', capacity: 2 }, // 2nd/3rd years
-      { hostelId: tagoreHall._id, block: 'Block A', floor: 1, roomNumber: '105', capacity: 3 }, // 1st years
-      { hostelId: tagoreHall._id, block: 'Block A', floor: 1, roomNumber: '106', capacity: 3 }, // 1st years
-
-      // Sarojini Hall (Girls) - Block B. Total capacity = 12
-      { hostelId: sarojiniHall._id, block: 'Block B', floor: 1, roomNumber: '201', capacity: 1 }, // 4th years
-      { hostelId: sarojiniHall._id, block: 'Block B', floor: 1, roomNumber: '202', capacity: 1 }, // 4th years
-      { hostelId: sarojiniHall._id, block: 'Block B', floor: 1, roomNumber: '203', capacity: 2 }, // 2nd/3rd years
-      { hostelId: sarojiniHall._id, block: 'Block B', floor: 1, roomNumber: '204', capacity: 2 }, // 2nd/3rd years
-      { hostelId: sarojiniHall._id, block: 'Block B', floor: 1, roomNumber: '205', capacity: 3 }, // 1st years
-      { hostelId: sarojiniHall._id, block: 'Block B', floor: 1, roomNumber: '206', capacity: 3 }, // 1st years
-    ];
     await Room.insertMany(roomsToCreate);
-    console.log('Rooms seeded with occupancy limits (capacity 1, 2, 3).');
+    console.log('Rooms seeded with occupancy limits (capacities 1, 2, 3, 4).');
 
-    // 6. Seed Students & Profiles (no distanceFromHome or smokingPreference)
-    const studentsRaw = [
-      // Boys (mix of 1st, 2nd, 3rd, 4th years)
-      { name: 'Rahul Sharma', email: 'rahul@gmail.com', cgpa: 9.2, batch: '2023', branch: 'CSE', region: 'North', floorPref: 'First Floor', year: 1, category: 'General', sleep: 'early_bird', wake: 'early', clean: 5, game: 'none', music: 'headphones', sports: ['Cricket', 'Football'], lang: ['Hindi', 'English'], tags: ['Quiet', 'Focused'] },
-      { name: 'Aryan Mehta', email: 'aryan@gmail.com', cgpa: 8.8, batch: '2023', branch: 'CSE', region: 'North', floorPref: 'First Floor', year: 1, category: 'General', sleep: 'early_bird', wake: 'early', clean: 4, game: 'casual', music: 'headphones', sports: ['Cricket'], lang: ['Hindi', 'English'], tags: ['Focused', 'Friendly'] },
-      { name: 'Aman Patel', email: 'aman@gmail.com', cgpa: 7.5, batch: '2022', branch: 'ECE', region: 'West', floorPref: 'Ground Floor', year: 2, category: 'OBC', sleep: 'night_owl', wake: 'late', clean: 2, game: 'heavy', music: 'speakers', sports: ['Football', 'Gaming'], lang: ['Gujarati', 'English'], tags: ['Gamer', 'Outgoing'] },
-      { name: 'Rohan Deshmukh', email: 'rohan@gmail.com', cgpa: 6.8, batch: '2022', branch: 'ECE', region: 'West', floorPref: 'Ground Floor', year: 2, category: 'General', sleep: 'night_owl', wake: 'late', clean: 2, game: 'heavy', music: 'speakers', sports: ['Gaming'], lang: ['Marathi', 'Hindi'], tags: ['Gamer', 'Chill'] },
-      { name: 'Siddharth Sen', email: 'siddharth@gmail.com', cgpa: 9.5, batch: '2023', branch: 'CSE', region: 'East', floorPref: 'First Floor', year: 1, category: 'SC_ST', sleep: 'early_bird', wake: 'early', clean: 5, game: 'none', music: 'none', sports: ['Chess'], lang: ['Bengali', 'English'], tags: ['Quiet', 'Academic'] },
-      { name: 'Kabir Kapoor', email: 'kabir@gmail.com', cgpa: 8.1, batch: '2021', branch: 'ME', region: 'North', floorPref: 'Second Floor', year: 3, category: 'General', sleep: 'flexible', wake: 'moderate', clean: 3, game: 'casual', music: 'headphones', sports: ['Basketball'], lang: ['Hindi', 'English'], tags: ['Friendly', 'Party'] },
-      { name: 'Vikram Singh', email: 'vikram@gmail.com', cgpa: 7.9, batch: '2021', branch: 'ME', region: 'North', floorPref: 'Second Floor', year: 3, category: 'EWS', sleep: 'flexible', wake: 'moderate', clean: 3, game: 'casual', music: 'speakers', sports: ['Cricket'], lang: ['Hindi', 'Punjabi'], tags: ['Outgoing', 'Music'] },
-      { name: 'Amit Verma', email: 'amit@gmail.com', cgpa: 8.4, batch: '2020', branch: 'CSE', region: 'North', floorPref: 'First Floor', year: 4, category: 'General', sleep: 'early_bird', wake: 'early', clean: 4, game: 'none', music: 'headphones', sports: ['Badminton'], lang: ['Hindi', 'English'], tags: ['Friendly', 'Focused'] },
-
-      // Girls
-      { name: 'Priya Iyer', email: 'priya@gmail.com', cgpa: 9.4, batch: '2023', branch: 'CSE', region: 'South', floorPref: 'Second Floor', year: 1, category: 'General', sleep: 'early_bird', wake: 'early', clean: 5, game: 'none', music: 'headphones', sports: ['Tennis', 'Badminton'], lang: ['Tamil', 'English'], tags: ['Studious', 'Quiet'] },
-      { name: 'Neha Gupta', email: 'neha@gmail.com', cgpa: 9.0, batch: '2023', branch: 'CSE', region: 'North', floorPref: 'Second Floor', year: 1, category: 'General', sleep: 'early_bird', wake: 'early', clean: 5, game: 'none', music: 'headphones', sports: ['Badminton'], lang: ['Hindi', 'English'], tags: ['Studious', 'Friendly'] },
-      { name: 'Ananya Rao', email: 'ananya@gmail.com', cgpa: 7.2, batch: '2022', branch: 'ECE', region: 'South', floorPref: 'Ground Floor', year: 2, category: 'OBC', sleep: 'night_owl', wake: 'late', clean: 3, game: 'casual', music: 'speakers', sports: ['Basketball'], lang: ['Telugu', 'English'], tags: ['Outgoing', 'Talkative'] },
-      { name: 'Sneha Nair', email: 'sneha@gmail.com', cgpa: 8.0, batch: '2022', branch: 'ECE', region: 'South', floorPref: 'Ground Floor', year: 2, category: 'General', sleep: 'night_owl', wake: 'late', clean: 3, game: 'heavy', music: 'speakers', sports: ['Gaming'], lang: ['Malayalam', 'English'], tags: ['Gamer', 'Outgoing'] },
-      { name: 'Pooja Joshi', email: 'pooja@gmail.com', cgpa: 8.5, batch: '2023', branch: 'CSE', region: 'North', floorPref: 'First Floor', year: 1, category: 'General', sleep: 'flexible', wake: 'moderate', clean: 4, game: 'none', music: 'headphones', sports: ['Yoga'], lang: ['Hindi', 'English'], tags: ['Friendly', 'Helpful'] },
-      { name: 'Rita Biswas', email: 'rita@gmail.com', cgpa: 6.9, batch: '2021', branch: 'CE', region: 'East', floorPref: 'First Floor', year: 3, category: 'SC_ST', sleep: 'flexible', wake: 'moderate', clean: 2, game: 'casual', music: 'headphones', sports: ['Reading'], lang: ['Bengali', 'English'], tags: ['Quiet', 'Chill'] },
-      { name: 'Sita Ramaswamy', email: 'sita@gmail.com', cgpa: 9.7, batch: '2020', branch: 'CSE', region: 'South', floorPref: 'Ground Floor', year: 4, category: 'General', sleep: 'early_bird', wake: 'early', clean: 5, hasDisability: true, game: 'none', music: 'none', sports: ['Chess'], lang: ['Tamil', 'Sanskrit'], tags: ['Introvert', 'Academic'] },
+    // 6. Generate 35 Boys and 35 Girls profiles dynamically
+    const boysNames = [
+      'Rahul Sharma', 'Aryan Mehta', 'Aman Patel', 'Rohan Deshmukh', 'Siddharth Sen',
+      'Kabir Kapoor', 'Vikram Singh', 'Amit Verma', 'Abhishek Mishra', 'Sanjay Kumar',
+      'Manish Pandey', 'Yash Vardhan', 'Sameer Sen', 'Tushar Kapoor', 'Raman Singh',
+      'Mohit Suri', 'Kartik Aaryan', 'Naveen Kumar', 'Saurabh Jain', 'Pankaj Yadav',
+      'Deepak Verma', 'Alok Tiwari', 'Gaurav Jha', 'Nitin Sharma', 'Vinay Prasad',
+      'Akash Mishra', 'Swadesh Pal', 'Pranjal Das', 'Sumit Roy', 'Vivek Dube',
+      'Ankit Dwivedi', 'Tarun Sinha', 'Ritesh Deshmukh', 'Hemant Joshi', 'Puneet Soni'
     ];
 
-    const seededUserMap = {};
+    const girlsNames = [
+      'Priya Iyer', 'Neha Gupta', 'Ananya Rao', 'Sneha Nair', 'Pooja Joshi',
+      'Rita Biswas', 'Sita Ramaswamy', 'Amrita Rao', 'Kavita Sharma', 'Ritu Sen',
+      'Divya Patel', 'Aarti Mishra', 'Preeti Goel', 'Jyoti Singh', 'Anjali Das',
+      'Megha Roy', 'Tanvi Bose', 'Shreya Pandey', 'Ruchi Saxena', 'Nidhi Agrawal',
+      'Swati Tiwari', 'Kiran Yadav', 'Archana Singh', 'Poonam Verma', 'Vandana Kumari',
+      'Shalini Nair', 'Renu Joshi', 'Payal Shah', 'Monika Dubey', 'Bharti Sharma',
+      'Sweta Tiwari', 'Sunita Rao', 'Prema Lal', 'Deepali Deshmukh', 'Lalita Iyer'
+    ];
 
-    for (let raw of studentsRaw) {
+    const branches = ['CSE', 'ECE', 'ME', 'CE'];
+    const regions = ['Delhi', 'Maharashtra', 'Uttar Pradesh', 'Karnataka', 'Tamil Nadu', 'Rajasthan'];
+    const sleep = ['early_bird', 'night_owl', 'flexible'];
+    const wake = ['early', 'moderate', 'late'];
+    const game = ['none', 'casual', 'heavy'];
+    const music = ['headphones', 'speakers', 'none'];
+    const sports = ['Cricket', 'Football', 'Chess', 'Basketball', 'Badminton'];
+    const tags = ['Quiet', 'Focused', 'Friendly', 'Studious', 'Gamer', 'Outgoing'];
+
+    const studentUserIds = [];
+
+    // Helper to generate a random item from array
+    const rand = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    // Helper to generate a slice of array
+    const randSlice = (arr, num) => {
+      const shuffled = [...arr].sort(() => 0.5 - Math.random());
+      return shuffled.slice(0, num);
+    };
+
+    // Seed Boys
+    for (let name of boysNames) {
+      const email = `${name.toLowerCase().replace(' ', '')}@university.edu`;
       const user = await User.create({
-        name: raw.name,
-        email: raw.email,
+        name,
+        email,
         password: 'password123',
         role: 'Student',
       });
-
-      seededUserMap[raw.name] = user._id;
+      studentUserIds.push(user._id);
 
       await StudentProfile.create({
         userId: user._id,
-        cgpa: raw.cgpa,
-        batch: raw.batch,
-        branch: raw.branch,
-        region: raw.region,
-        floorPreference: raw.floorPref,
-        academicYear: raw.year,
-        category: raw.category,
-        hasDisability: raw.hasDisability || false,
+        cgpa: parseFloat((6.0 + Math.random() * 4.0).toFixed(2)),
+        batch: rand(['2021', '2022', '2023', '2024']),
+        branch: rand(branches),
+        region: rand(regions),
+        gender: 'Male',
+        floorPreference: rand(['Ground Floor', 'First Floor', 'Second Floor', 'No Preference']),
+        academicYear: rand([1, 2, 3, 4]),
+        category: rand(['General', 'SC_ST', 'OBC', 'EWS']),
+        hasDisability: Math.random() < 0.05,
+        hasScholarship: Math.random() < 0.15,
+        sportsQuota: Math.random() < 0.1,
         roommateCompatibilityProfile: {
-          sleepSchedule: raw.sleep,
-          wakeTime: raw.wake,
-          cleanlinessRating: raw.clean,
+          sleepSchedule: rand(sleep),
+          wakeTime: rand(wake),
+          cleanlinessRating: Math.floor(Math.random() * 5) + 1,
           studyHabit: 'flexible',
-          introvertExtrovertScale: 3,
-          gamingHabit: raw.game,
-          musicPreference: raw.music,
-          sportsInterests: raw.sports,
-          languagesSpoken: raw.lang,
-          personalityTags: raw.tags,
+          introvertExtrovertScale: Math.floor(Math.random() * 5) + 1,
+          gamingHabit: rand(game),
+          musicPreference: rand(music),
+          sportsInterests: randSlice(sports, 2),
+          languagesSpoken: ['English', 'Hindi'],
+          personalityTags: randSlice(tags, 2),
         },
         preferredRoommates: [],
       });
     }
 
-    // Set up roommate preferences to show mutual vs single preferences logic
-    // Rahul prefers Aryan
-    const rahulProfile = await StudentProfile.findOne({ userId: seededUserMap['Rahul Sharma'] });
-    rahulProfile.preferredRoommates.push(seededUserMap['Aryan Mehta']);
-    await rahulProfile.save();
+    // Seed Girls
+    for (let name of girlsNames) {
+      const email = `${name.toLowerCase().replace(' ', '')}@university.edu`;
+      const user = await User.create({
+        name,
+        email,
+        password: 'password123',
+        role: 'Student',
+      });
+      studentUserIds.push(user._id);
 
-    // Aryan prefers Rahul (Mutual)
-    const aryanProfile = await StudentProfile.findOne({ userId: seededUserMap['Aryan Mehta'] });
-    aryanProfile.preferredRoommates.push(seededUserMap['Rahul Sharma']);
-    await aryanProfile.save();
+      await StudentProfile.create({
+        userId: user._id,
+        cgpa: parseFloat((6.0 + Math.random() * 4.0).toFixed(2)),
+        batch: rand(['2021', '2022', '2023', '2024']),
+        branch: rand(branches),
+        region: rand(regions),
+        gender: 'Female',
+        floorPreference: rand(['Ground Floor', 'First Floor', 'Second Floor', 'No Preference']),
+        academicYear: rand([1, 2, 3, 4]),
+        category: rand(['General', 'SC_ST', 'OBC', 'EWS']),
+        hasDisability: Math.random() < 0.05,
+        hasScholarship: Math.random() < 0.15,
+        sportsQuota: Math.random() < 0.1,
+        roommateCompatibilityProfile: {
+          sleepSchedule: rand(sleep),
+          wakeTime: rand(wake),
+          cleanlinessRating: Math.floor(Math.random() * 5) + 1,
+          studyHabit: 'flexible',
+          introvertExtrovertScale: Math.floor(Math.random() * 5) + 1,
+          gamingHabit: rand(game),
+          musicPreference: rand(music),
+          sportsInterests: randSlice(sports, 2),
+          languagesSpoken: ['English', 'Hindi'],
+          personalityTags: randSlice(tags, 2),
+        },
+        preferredRoommates: [],
+      });
+    }
 
-    // Aman prefers Rohan (Mutual)
-    const amanProfile = await StudentProfile.findOne({ userId: seededUserMap['Aman Patel'] });
-    amanProfile.preferredRoommates.push(seededUserMap['Rohan Deshmukh']);
-    await amanProfile.save();
+    // Set up a few mutual preferences for boys
+    const rahulUser = await User.findOne({ name: 'Rahul Sharma' });
+    const aryanUser = await User.findOne({ name: 'Aryan Mehta' });
+    if (rahulUser && aryanUser) {
+      const rahulProfile = await StudentProfile.findOne({ userId: rahulUser._id });
+      const aryanProfile = await StudentProfile.findOne({ userId: aryanUser._id });
+      if (rahulProfile && aryanProfile) {
+        rahulProfile.preferredRoommates.push(aryanUser._id);
+        await rahulProfile.save();
+        aryanProfile.preferredRoommates.push(rahulUser._id);
+        await aryanProfile.save();
+      }
+    }
 
-    // Rohan prefers Aman (Mutual)
-    const rohanProfile = await StudentProfile.findOne({ userId: seededUserMap['Rohan Deshmukh'] });
-    rohanProfile.preferredRoommates.push(seededUserMap['Aman Patel']);
-    await rohanProfile.save();
+    // Set up mutual preferences for girls
+    const priyaUser = await User.findOne({ name: 'Priya Iyer' });
+    const nehaUser = await User.findOne({ name: 'Neha Gupta' });
+    if (priyaUser && nehaUser) {
+      const priyaProfile = await StudentProfile.findOne({ userId: priyaUser._id });
+      const nehaProfile = await StudentProfile.findOne({ userId: nehaUser._id });
+      if (priyaProfile && nehaProfile) {
+        priyaProfile.preferredRoommates.push(nehaUser._id);
+        await priyaProfile.save();
+        nehaProfile.preferredRoommates.push(priyaUser._id);
+        await nehaProfile.save();
+      }
+    }
 
-    // Priya prefers Neha
-    const priyaProfile = await StudentProfile.findOne({ userId: seededUserMap['Priya Iyer'] });
-    priyaProfile.preferredRoommates.push(seededUserMap['Neha Gupta']);
-    await priyaProfile.save();
-
-    // Neha prefers Priya (Mutual)
-    const nehaProfile = await StudentProfile.findOne({ userId: seededUserMap['Neha Gupta'] });
-    nehaProfile.preferredRoommates.push(seededUserMap['Priya Iyer']);
-    await nehaProfile.save();
-
-    // Seed a couple of complaints to test Conflict Avoidance
-    // Kabir complains about Vikram (Smoking/Noise issue)
-    await Complaint.create({
-      reporterId: seededUserMap['Kabir Kapoor'],
-      accusedId: seededUserMap['Vikram Singh'],
-      type: 'Noise',
-      severity: 'High',
-      description: 'Vikram plays music late at night causing disturbance.',
-      status: 'Open',
-    });
-
-    // Ananya complains about Sneha (Cleanliness issue)
-    await Complaint.create({
-      reporterId: seededUserMap['Ananya Rao'],
-      accusedId: seededUserMap['Sneha Nair'],
-      type: 'Cleanliness',
-      severity: 'Medium',
-      description: 'Sneha leaves trash around the room and never cleans up.',
-      status: 'Open',
-    });
-
-    console.log('Students, Roommate Preferences, and Complaints seeded successfully.');
     console.log('Seeding complete. Exiting.');
     process.exit(0);
   } catch (error) {

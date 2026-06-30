@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
 import api from '../../utils/api';
 import { HelpCircle, Save, CheckCircle, AlertTriangle } from 'lucide-react';
 
 const StudentQuiz = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -14,7 +16,8 @@ const StudentQuiz = () => {
     cgpa: 7.0,
     batch: '2024',
     branch: 'CSE',
-    region: 'North',
+    region: 'Delhi',
+    gender: 'Male',
     floorPreference: 'No Preference',
     academicYear: 1,
     category: 'General',
@@ -45,7 +48,8 @@ const StudentQuiz = () => {
             cgpa: prof.cgpa || 7.0,
             batch: prof.batch || '2024',
             branch: prof.branch || 'CSE',
-            region: prof.region || 'North',
+            region: prof.region || 'Delhi',
+            gender: prof.gender || 'Male',
             floorPreference: prof.floorPreference || 'No Preference',
             academicYear: prof.academicYear || 1,
             category: prof.category || 'General',
@@ -89,7 +93,10 @@ const StudentQuiz = () => {
     try {
       const res = await api.put('/matching/profile', formattedData);
       if (res.data.success) {
-        setMessage({ type: 'success', text: 'Lifestyle compatibility profile saved successfully.' });
+        setMessage({ type: 'success', text: 'Lifestyle compatibility profile saved successfully. Redirecting...' });
+        setTimeout(() => {
+          navigate('/student/dashboard');
+        }, 2000);
       }
     } catch (err) {
       setMessage({ type: 'error', text: 'Failed to update compatibility profile.' });
@@ -116,17 +123,17 @@ const StudentQuiz = () => {
   }
 
   return (
-    <div className="flex h-screen bg-brand-bg overflow-hidden">
+    <div className="flex h-screen bg-brand-bg overflow-hidden text-slate-800">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header title="Lifestyle Quiz" />
 
-        <main className="flex-1 overflow-y-auto p-8">
+        <main className="flex-1 overflow-y-auto p-8 bg-slate-50">
           {message.text && (
             <div className={`mb-6 p-4 rounded-xl text-sm border flex items-center gap-3 ${
               message.type === 'success' 
-                ? 'bg-emerald-50 border-emerald-100 text-emerald-700' 
-                : 'bg-rose-50 border-rose-100 text-rose-700'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
+                : 'bg-rose-50 border-rose-200 text-rose-700'
             }`}>
               {message.type === 'success' ? <CheckCircle className="w-5 h-5 shrink-0" /> : <AlertTriangle className="w-5 h-5 shrink-0" />}
               <span>{message.text}</span>
@@ -134,13 +141,13 @@ const StudentQuiz = () => {
           )}
 
           <div className="premium-card p-6 max-w-3xl">
-            <div className="flex items-center gap-2 mb-6">
+            <div className="flex items-center gap-2.5 mb-6">
               <HelpCircle className="w-5 h-5 text-brand-teal" />
-              <h4 className="text-sm font-semibold text-brand-dark">Compatibility Questionnaire</h4>
+              <h4 className="text-sm font-bold text-slate-800">Compatibility Questionnaire</h4>
             </div>
 
             {status === 'Allocated' && (
-              <div className="mb-6 p-4 bg-amber-50 border border-brand-warning/10 rounded-lg text-brand-warning text-xs flex gap-2">
+              <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 text-xs flex gap-2.5">
                 <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                 <p><strong>Note:</strong> Hostel/Room matching has already been finalized by administrators. Modifying your profile will not impact your current room details until the next allocation cycle.</p>
               </div>
@@ -148,10 +155,11 @@ const StudentQuiz = () => {
 
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Academic/Institutional Fields */}
-              <h5 className="text-xs font-bold text-brand-dark uppercase tracking-wider border-b border-slate-100 pb-2">Academic & College Profile</h5>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <h5 className="text-[10px] font-bold text-brand-teal uppercase tracking-widest border-b border-slate-200 pb-2">Academic & College Profile</h5>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">CGPA (0.0 - 10.0)</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-550 mb-1.5">CGPA (0.0 - 10.0)</label>
                   <input
                     type="number"
                     step="0.01"
@@ -164,7 +172,7 @@ const StudentQuiz = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">Batch Year</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-555 mb-1.5">Batch Year</label>
                   <input
                     type="text"
                     value={form.batch}
@@ -175,7 +183,7 @@ const StudentQuiz = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">Branch / Major</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-555 mb-1.5">Branch / Major</label>
                   <input
                     type="text"
                     value={form.branch}
@@ -186,24 +194,54 @@ const StudentQuiz = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">State / Region</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-555 mb-1.5">State / Region</label>
                   <select
                     value={form.region}
                     onChange={(e) => setForm({ ...form, region: e.target.value })}
-                    className="premium-input text-xs"
+                    className="premium-input text-xs bg-white text-slate-800 cursor-pointer"
                   >
-                    <option value="North">North</option>
-                    <option value="South">South</option>
-                    <option value="East">East</option>
-                    <option value="West">West</option>
+                    <option value="Delhi">Delhi</option>
+                    <option value="Maharashtra">Maharashtra</option>
+                    <option value="Uttar Pradesh">Uttar Pradesh</option>
+                    <option value="Karnataka">Karnataka</option>
+                    <option value="Tamil Nadu">Tamil Nadu</option>
+                    <option value="Rajasthan">Rajasthan</option>
+                    <option value="Punjab">Punjab</option>
+                    <option value="Haryana">Haryana</option>
+                    <option value="Gujarat">Gujarat</option>
+                    <option value="Madhya Pradesh">Madhya Pradesh</option>
+                    <option value="West Bengal">West Bengal</option>
+                    <option value="Bihar">Bihar</option>
+                    <option value="Andhra Pradesh">Andhra Pradesh</option>
+                    <option value="Telangana">Telangana</option>
+                    <option value="Kerala">Kerala</option>
+                    <option value="Uttarakhand">Uttarakhand</option>
+                    <option value="Himachal Pradesh">Himachal Pradesh</option>
+                    <option value="Jharkhand">Jharkhand</option>
+                    <option value="Chhattisgarh">Chhattisgarh</option>
+                    <option value="Odisha">Odisha</option>
+                    <option value="Assam">Assam</option>
+                    <option value="Goa">Goa</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">Academic Year</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-555 mb-1.5">Gender</label>
+                  <select
+                    value={form.gender}
+                    onChange={(e) => setForm({ ...form, gender: e.target.value })}
+                    className="premium-input text-xs bg-white text-slate-800 cursor-pointer"
+                    required
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-555 mb-1.5">Academic Year</label>
                   <select
                     value={form.academicYear}
                     onChange={(e) => setForm({ ...form, academicYear: Number(e.target.value) })}
-                    className="premium-input text-xs"
+                    className="premium-input text-xs bg-white text-slate-800 cursor-pointer"
                   >
                     <option value="1">1st Year (3-sharing rooms)</option>
                     <option value="2">2nd Year (2-sharing rooms)</option>
@@ -212,11 +250,11 @@ const StudentQuiz = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">Floor Preference</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-555 mb-1.5">Floor Preference</label>
                   <select
                     value={form.floorPreference}
                     onChange={(e) => setForm({ ...form, floorPreference: e.target.value })}
-                    className="premium-input text-xs"
+                    className="premium-input text-xs bg-white text-slate-800 cursor-pointer"
                   >
                     <option value="Ground Floor">Ground Floor</option>
                     <option value="First Floor">First Floor</option>
@@ -225,11 +263,11 @@ const StudentQuiz = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">Reservation Category</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-555 mb-1.5">Reservation Category</label>
                   <select
                     value={form.category}
                     onChange={(e) => setForm({ ...form, category: e.target.value })}
-                    className="premium-input text-xs"
+                    className="premium-input text-xs bg-white text-slate-800 cursor-pointer"
                   >
                     <option value="General">General</option>
                     <option value="SC_ST">SC / ST</option>
@@ -238,31 +276,31 @@ const StudentQuiz = () => {
                   </select>
                 </div>
 
-                <div className="sm:col-span-2 grid grid-cols-3 gap-4 pt-2">
-                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer">
+                <div className="sm:col-span-2 grid grid-cols-3 gap-4 pt-3 border-t border-slate-200 mt-2">
+                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer hover:text-slate-900 transition">
                     <input 
                       type="checkbox" 
                       checked={form.hasDisability}
                       onChange={(e) => setForm({ ...form, hasDisability: e.target.checked })}
-                      className="w-4 h-4 rounded text-brand-teal focus:ring-brand-teal border-slate-300"
+                      className="w-4 h-4 rounded border-slate-300 text-brand-teal focus:ring-brand-teal cursor-pointer accent-brand-teal"
                     />
                     Physically Disabled
                   </label>
-                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer">
+                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer hover:text-slate-900 transition">
                     <input 
                       type="checkbox" 
                       checked={form.hasScholarship}
                       onChange={(e) => setForm({ ...form, hasScholarship: e.target.checked })}
-                      className="w-4 h-4 rounded text-brand-teal focus:ring-brand-teal border-slate-300"
+                      className="w-4 h-4 rounded border-slate-300 text-brand-teal focus:ring-brand-teal cursor-pointer accent-brand-teal"
                     />
-                    Scholarship holder
+                    Scholarship Holder
                   </label>
-                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer">
+                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer hover:text-slate-900 transition">
                     <input 
                       type="checkbox" 
                       checked={form.sportsQuota}
                       onChange={(e) => setForm({ ...form, sportsQuota: e.target.checked })}
-                      className="w-4 h-4 rounded text-brand-teal focus:ring-brand-teal border-slate-300"
+                      className="w-4 h-4 rounded border-slate-300 text-brand-teal focus:ring-brand-teal cursor-pointer accent-brand-teal"
                     />
                     Sports Quota
                   </label>
@@ -270,14 +308,15 @@ const StudentQuiz = () => {
               </div>
 
               {/* Lifestyle Preferences */}
-              <h5 className="text-xs font-bold text-brand-dark uppercase tracking-wider border-b border-slate-100 pb-2 mt-6">Lifestyle & Roommate Compatibility Quiz</h5>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <h5 className="text-[10px] font-bold text-brand-teal uppercase tracking-widest border-b border-slate-200 pb-2 mt-8">Lifestyle & Roommate Compatibility Quiz</h5>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">Sleep Schedule</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Sleep Schedule</label>
                   <select
                     value={form.sleepSchedule}
                     onChange={(e) => setForm({ ...form, sleepSchedule: e.target.value })}
-                    className="premium-input text-xs"
+                    className="premium-input text-xs bg-white text-slate-800 cursor-pointer"
                   >
                     <option value="early_bird">Early Bird</option>
                     <option value="night_owl">Night Owl</option>
@@ -285,11 +324,11 @@ const StudentQuiz = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">Wake Time</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Wake Time</label>
                   <select
                     value={form.wakeTime}
                     onChange={(e) => setForm({ ...form, wakeTime: e.target.value })}
-                    className="premium-input text-xs"
+                    className="premium-input text-xs bg-white text-slate-800 cursor-pointer"
                   >
                     <option value="early">Early (Before 7:00 AM)</option>
                     <option value="moderate">Moderate (7:00 AM - 9:00 AM)</option>
@@ -297,7 +336,7 @@ const StudentQuiz = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">Cleanliness Rating (1-5)</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Cleanliness Rating (1-5)</label>
                   <input
                     type="number"
                     min="1"
@@ -309,11 +348,11 @@ const StudentQuiz = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">Study Habits</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Study Habits</label>
                   <select
                     value={form.studyHabit}
                     onChange={(e) => setForm({ ...form, studyHabit: e.target.value })}
-                    className="premium-input text-xs"
+                    className="premium-input text-xs bg-white text-slate-800 cursor-pointer"
                   >
                     <option value="quiet">Strictly Quiet</option>
                     <option value="group">Study Groups</option>
@@ -321,7 +360,7 @@ const StudentQuiz = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">Introvert vs Extrovert Scale (1-5)</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Introvert vs Extrovert Scale (1-5)</label>
                   <input
                     type="number"
                     min="1"
@@ -333,11 +372,11 @@ const StudentQuiz = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">Gaming Habit</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Gaming Habit</label>
                   <select
                     value={form.gamingHabit}
                     onChange={(e) => setForm({ ...form, gamingHabit: e.target.value })}
-                    className="premium-input text-xs"
+                    className="premium-input text-xs bg-white text-slate-800 cursor-pointer"
                   >
                     <option value="none">No Gaming</option>
                     <option value="casual">Casual / Sometimes</option>
@@ -345,11 +384,11 @@ const StudentQuiz = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">Music Habit</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Music Habit</label>
                   <select
                     value={form.musicPreference}
                     onChange={(e) => setForm({ ...form, musicPreference: e.target.value })}
-                    className="premium-input text-xs"
+                    className="premium-input text-xs bg-white text-slate-800 cursor-pointer"
                   >
                     <option value="headphones">Always on Headphones</option>
                     <option value="speakers">Okay with Speakers</option>
@@ -357,7 +396,7 @@ const StudentQuiz = () => {
                   </select>
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-xs text-slate-500 mb-1">Sports Interests (Comma separated)</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Sports Interests (Comma separated)</label>
                   <input
                     type="text"
                     value={form.sportsInterests}
@@ -367,7 +406,7 @@ const StudentQuiz = () => {
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-xs text-slate-500 mb-1">Languages Spoken (Comma separated)</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Languages Spoken (Comma separated)</label>
                   <input
                     type="text"
                     value={form.languagesSpoken}
@@ -377,7 +416,7 @@ const StudentQuiz = () => {
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-xs text-slate-500 mb-1">Personality Tags (Comma separated)</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Personality Tags (Comma separated)</label>
                   <input
                     type="text"
                     value={form.personalityTags}
@@ -388,11 +427,11 @@ const StudentQuiz = () => {
                 </div>
               </div>
 
-              <div className="flex justify-end pt-4 border-t border-slate-100">
+              <div className="flex justify-end pt-5 border-t border-slate-200 mt-4">
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="btn-primary py-2.5 px-6 text-xs flex items-center gap-2"
+                  className="btn-primary py-3 px-6 text-xs flex items-center gap-2 uppercase tracking-wider font-black"
                 >
                   <Save className="w-4 h-4" />
                   {submitting ? 'Saving modifications...' : 'Save Compatibility Profile'}

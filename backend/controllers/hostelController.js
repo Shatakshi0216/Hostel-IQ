@@ -93,8 +93,13 @@ const createHostel = async (req, res) => {
 const updateHostel = async (req, res) => {
   try {
     // Enforce Warden scoping limit
-    if (req.user.role === 'HostelAdmin' && req.user.managedHostelId.toString() !== req.params.id) {
-      return res.status(403).json({ success: false, message: 'Wardens can only update settings for their associated hostel.' });
+    if (req.user.role === 'HostelAdmin') {
+      if (req.body.minCgpa !== undefined) {
+        return res.status(403).json({ success: false, message: 'Wardens are not authorized to alter the CGPA threshold requirements.' });
+      }
+      if (req.user.managedHostelId.toString() !== req.params.id) {
+        return res.status(403).json({ success: false, message: 'Wardens can only update settings for their associated hostel.' });
+      }
     }
 
     let hostel = await Hostel.findById(req.params.id);

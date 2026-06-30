@@ -145,7 +145,6 @@ const studentProfileSchema = new mongoose.Schema(
 );
 
 // Indexes
-studentProfileSchema.index({ userId: 1 });
 studentProfileSchema.index({ priorityScore: -1 });
 studentProfileSchema.index({ status: 1 });
 

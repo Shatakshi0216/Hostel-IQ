@@ -15,6 +15,6 @@ router.put('/profile', updateCompatibilityProfile);
 router.put('/preferences', updatePreferences);
 router.get('/options', getRoommateOptions);
 router.get('/details', getStudentAllocationDetails);
-router.post('/run', authorize('SuperAdmin', 'HostelAdmin'), runMatchingEngine);
+router.post('/run', authorize('SuperAdmin'), runMatchingEngine);
 
 module.exports = router;

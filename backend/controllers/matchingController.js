@@ -18,6 +18,7 @@ const updateCompatibilityProfile = async (req, res) => {
     hasDisability,
     hasScholarship,
     sportsQuota,
+    gender,
     sleepSchedule,
     wakeTime,
     cleanlinessRating,
@@ -48,6 +49,7 @@ const updateCompatibilityProfile = async (req, res) => {
     if (hasDisability !== undefined) profile.hasDisability = hasDisability;
     if (hasScholarship !== undefined) profile.hasScholarship = hasScholarship;
     if (sportsQuota !== undefined) profile.sportsQuota = sportsQuota;
+    if (gender !== undefined) profile.gender = gender;
 
     // Update compatibility profile sub-document (no smokingPreference)
     profile.roommateCompatibilityProfile = {
@@ -121,28 +123,22 @@ const getRoommateOptions = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Student profile not found' });
     }
 
-    let filter = { role: 'Student', _id: { $ne: req.user._id } };
+    let profileFilter = { userId: { $ne: req.user._id } };
 
     // If student is allocated to a hostel, restrict roommate preferences to students allocated to the SAME hostel
     if (student.allocatedHostelId) {
-      const sameHostelProfiles = await StudentProfile.find({
-        allocatedHostelId: student.allocatedHostelId,
-        userId: { $ne: req.user._id },
-      });
-      const sameHostelUserIds = sameHostelProfiles.map(p => p.userId);
-      filter._id = { $in: sameHostelUserIds };
+      profileFilter.allocatedHostelId = student.allocatedHostelId;
     }
 
-    const users = await User.find(filter).select('name email');
+    const profiles = await StudentProfile.find(profileFilter).populate('userId', 'name email');
     
     const populatedOptions = [];
-    for (let u of users) {
-      const p = await StudentProfile.findOne({ userId: u._id });
-      if (p) {
+    for (let p of profiles) {
+      if (p.userId) {
         populatedOptions.push({
-          _id: u._id,
-          name: u.name,
-          email: u.email,
+          _id: p.userId._id,
+          name: p.userId.name,
+          email: p.userId.email,
           cgpa: p.cgpa,
           batch: p.batch,
           branch: p.branch,
@@ -259,6 +255,7 @@ const runMatchingEngine = async (req, res) => {
     const result = await runRoommateAllocation();
     res.json(result);
   } catch (error) {
+    console.error('Roommate Matching Error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
