@@ -24,10 +24,9 @@ const hostelSchema = new mongoose.Schema(
       min: 0.0,
       max: 10.0,
     },
-    allowedYear: {
-      type: Number,
-      enum: [1, 2, 3, 4],
-      required: true,
+    allowedCohorts: {
+      type: [String],
+      default: ['BTech 1', 'BTech 2', 'BTech 3', 'BTech 4', 'MTech', 'MCA', 'PhD'],
     },
   },
   {

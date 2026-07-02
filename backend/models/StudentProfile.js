@@ -79,10 +79,10 @@ const studentProfileSchema = new mongoose.Schema(
       default: 'No Preference'
     },
     academicYear: {
-      type: Number, // 1, 2, 3, 4
+      type: String,
+      enum: ['BTech 1', 'BTech 2', 'BTech 3', 'BTech 4', 'MTech', 'MCA', 'PhD'],
       required: true,
-      min: 1,
-      max: 4
+      default: 'BTech 1'
     },
     category: {
       type: String,

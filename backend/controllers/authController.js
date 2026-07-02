@@ -32,11 +32,12 @@ const registerUser = async (req, res) => {
     if (user) {
       // If user is a Student, create a default empty StudentProfile
       if (user.role === 'Student') {
+        const isFemale = /priya|neha|sita|rita|female|girl|ananya|pooja|sneha|shatakshi/i.test(user.name);
         await StudentProfile.create({
           userId: user._id,
           cgpa: 7.0, // defaults
-          distanceFromHome: 100,
-          academicYear: 1,
+          academicYear: 'BTech 1',
+          gender: isFemale ? 'Female' : 'Male',
         });
       }
 
@@ -141,9 +142,29 @@ const getStudentsList = async (req, res) => {
   }
 };
 
+// @desc    Get all wardens (SuperAdmin only)
+// @route   GET /api/auth/wardens
+// @access  Private (SuperAdmin)
+const getWardensList = async (req, res) => {
+  try {
+    if (req.user.role !== 'SuperAdmin') {
+      return res.status(403).json({ success: false, message: 'Not authorized to access warden listings.' });
+    }
+
+    const wardens = await User.find({ role: 'HostelAdmin' })
+      .populate('managedHostelId', 'name')
+      .select('name email phone managedHostelId');
+
+    res.json({ success: true, data: wardens });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
   getMe,
   getStudentsList,
+  getWardensList,
 };

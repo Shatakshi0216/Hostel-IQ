@@ -97,7 +97,7 @@ const runHostelAllocation = async () => {
       name: hostel.name,
       genderRestriction: hostel.genderRestriction,
       minCgpa: hostel.minCgpa || 0.0,
-      allowedYear: hostel.allowedYear,
+      allowedCohorts: hostel.allowedCohorts || [],
       totalCapacity: totalCap > 0 ? totalCap : hostel.totalCapacity,
       allocatedCount: 0
     };
@@ -134,7 +134,7 @@ const runHostelAllocation = async () => {
       const hostel = hostelCapacities[hostelId];
       const genderMatches = hostel.genderRestriction === 'Co-ed' || hostel.genderRestriction === studentGender;
       const cgpaMatches = student.cgpa >= hostel.minCgpa;
-      const yearMatches = student.academicYear === hostel.allowedYear;
+      const yearMatches = hostel.allowedCohorts && hostel.allowedCohorts.includes(student.academicYear);
       
       if (genderMatches && cgpaMatches && yearMatches && hostel.allocatedCount < hostel.totalCapacity) {
         allocatedHostel = hostel;

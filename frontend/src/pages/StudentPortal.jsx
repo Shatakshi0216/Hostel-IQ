@@ -15,12 +15,13 @@ import {
   Lock,
   Flag,
   FlameKindling,
-  Search
+  Search,
+  RefreshCw
 } from 'lucide-react';
 
 const StudentPortal = () => {
   const { refreshMe } = useAuth();
-  const [activeTab, setActiveTab] = useState('overview'); // overview, quiz, preferences, complaints
+  const [activeTab, setActiveTab] = useState('overview'); // overview, quiz, preferences, complaints, swap
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -30,11 +31,16 @@ const StudentPortal = () => {
   const [studentsList, setStudentsList] = useState([]); // List for preference autocomplete
   const [complaints, setComplaints] = useState([]);
 
+  // Room swap states
+  const [swapRequests, setSwapRequests] = useState([]);
+  const [swapEmail, setSwapEmail] = useState('');
+  const [swapMessage, setSwapMessage] = useState({ type: '', text: '' });
+
   // Form states
   const [quizForm, setQuizForm] = useState({
     cgpa: 7.0,
     distanceFromHome: 100,
-    academicYear: 1,
+    academicYear: 'BTech 1',
     category: 'General',
     hasDisability: false,
     hasScholarship: false,
@@ -63,6 +69,49 @@ const StudentPortal = () => {
     description: '',
   });
 
+  const fetchSwapRequests = async () => {
+    try {
+      const res = await api.get('/rooms/swaps');
+      if (res.data.success) {
+        setSwapRequests(res.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to retrieve swap requests:', err);
+    }
+  };
+
+  const handleSendSwapRequest = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setSwapMessage({ type: '', text: '' });
+
+    try {
+      const res = await api.post('/rooms/swaps/request', { targetEmail: swapEmail });
+      if (res.data.success) {
+        setSwapMessage({ type: 'success', text: 'Room swap request sent successfully!' });
+        setSwapEmail('');
+        fetchSwapRequests();
+      }
+    } catch (err) {
+      setSwapMessage({ type: 'error', text: err.response?.data?.message || 'Failed to send swap request' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRespondSwap = async (requestId, action) => {
+    try {
+      const res = await api.put(`/rooms/swaps/request/${requestId}`, { action });
+      if (res.data.success) {
+        setSwapMessage({ type: 'success', text: res.data.message || `Swap request ${action}ed!` });
+        fetchSwapRequests();
+        fetchStudentData(); // Refresh current room allocations
+      }
+    } catch (err) {
+      setSwapMessage({ type: 'error', text: err.response?.data?.message || 'Failed to respond to swap request' });
+    }
+  };
+
   const fetchStudentData = async () => {
     try {
       const detailsRes = await api.get('/matching/details');
@@ -77,7 +126,7 @@ const StudentPortal = () => {
           setQuizForm({
             cgpa: prof.cgpa || 7.0,
             distanceFromHome: prof.distanceFromHome || 100,
-            academicYear: prof.academicYear || 1,
+            academicYear: prof.academicYear || 'BTech 1',
             category: prof.category || 'General',
             hasDisability: prof.hasDisability || false,
             hasScholarship: prof.hasScholarship || false,
@@ -96,6 +145,10 @@ const StudentPortal = () => {
           });
           
           setSelectedPreferences(prof.preferredRoommates || []);
+
+          if (prof.allocatedRoomId) {
+            fetchSwapRequests();
+          }
         }
       }
 
@@ -251,7 +304,7 @@ const StudentPortal = () => {
 
         {/* Tab navigation */}
         <div className="bg-white border-b border-slate-200 px-8 flex gap-6">
-          {['overview', 'quiz', 'preferences', 'complaints'].map(tab => (
+          {['overview', 'quiz', 'preferences', 'complaints', 'swap'].map(tab => (
             <button
               key={tab}
               onClick={() => { setActiveTab(tab); setMessage({ type: '', text: '' }); }}
@@ -265,6 +318,7 @@ const StudentPortal = () => {
               {tab === 'quiz' && 'Compatibility Quiz'}
               {tab === 'preferences' && 'Roommate Preferences'}
               {tab === 'complaints' && 'Conflict Desk'}
+              {tab === 'swap' && 'Room Swap'}
             </button>
           ))}
         </div>
@@ -813,6 +867,123 @@ const StudentPortal = () => {
                     <p className="text-xs text-slate-400 text-center py-8 border border-dashed border-slate-200 rounded-lg bg-slate-50/50">
                       No complaints logged.
                     </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: ROOM SWAP DESK */}
+          {activeTab === 'swap' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Send swap request form */}
+              <div className="premium-card p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Users className="w-5 h-5 text-brand-teal" />
+                  <h4 className="text-sm font-semibold text-brand-dark">Request Room Swap</h4>
+                </div>
+                
+                {profile.status === 'Allocated' && profile.allocatedRoomId ? (
+                  <form onSubmit={handleSendSwapRequest} className="space-y-4">
+                    {swapMessage.text && (
+                      <div className={`p-3 rounded-lg text-xs font-bold border ${
+                        swapMessage.type === 'success' 
+                          ? 'bg-emerald-50 border-emerald-250 text-emerald-600' 
+                          : 'bg-rose-50 border-rose-200 text-rose-600'
+                      }`}>
+                        {swapMessage.text}
+                      </div>
+                    )}
+                    
+                    <div>
+                      <p className="text-xs text-slate-500 mb-3 leading-relaxed">
+                        To initiate a swap, enter the exact institutional email address of the classmate you wish to swap rooms with.
+                      </p>
+                      <label className="block text-xs text-slate-500 mb-1">Classmate's Email Address</label>
+                      <input
+                        type="email"
+                        value={swapEmail}
+                        onChange={(e) => setSwapEmail(e.target.value)}
+                        placeholder="e.g. student@university.edu"
+                        className="premium-input text-xs"
+                        required
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="btn-primary w-full py-2.5 flex items-center justify-center text-xs mt-2"
+                    >
+                      {submitting ? 'Sending Request...' : 'Send Swap Request'}
+                    </button>
+                  </form>
+                ) : (
+                  <div className="py-6 text-center text-slate-400 font-semibold text-xs leading-relaxed border border-dashed border-slate-200 rounded-lg bg-slate-50/50">
+                    ⚠️ You must be allocated a room block first to request a swap.
+                  </div>
+                )}
+              </div>
+
+              {/* Active swap logs */}
+              <div className="premium-card p-6 lg:col-span-2">
+                <div className="flex items-center gap-2 mb-4">
+                  <RefreshCw className="w-5 h-5 text-brand-teal" />
+                  <h4 className="text-sm font-semibold text-brand-dark">Room Swap Request Log</h4>
+                </div>
+
+                <div className="space-y-4">
+                  {swapRequests.length > 0 ? (
+                    swapRequests.map(req => {
+                      const isRequester = req.requesterId?._id === details?.profile?.userId;
+                      const peerUser = isRequester ? req.targetStudentId : req.requesterId;
+                      return (
+                        <div key={req._id} className="p-4 border border-slate-100 rounded-lg bg-slate-50/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                          <div>
+                            <span className="text-xs font-bold text-brand-dark block">
+                              {isRequester ? `Sent swap request to ${peerUser?.name}` : `Received swap request from ${peerUser?.name}`}
+                            </span>
+                            <span className="text-[10px] text-slate-400 block mt-0.5">{peerUser?.email}</span>
+                            <span className="text-[10px] font-semibold text-slate-500 mt-2 block">
+                              Created: {new Date(req.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-3">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                              req.status === 'Approved'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                : req.status === 'Rejected'
+                                ? 'bg-rose-50 text-rose-700 border border-rose-100'
+                                : 'bg-amber-50 text-amber-700 border border-amber-100'
+                            }`}>
+                              {req.status}
+                            </span>
+                            
+                            {!isRequester && req.status === 'Pending' && (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleRespondSwap(req._id, 'approve')}
+                                  className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded font-bold text-[10px] uppercase tracking-wider cursor-pointer"
+                                >
+                                  Accept
+                                </button>
+                                <button
+                                  onClick={() => handleRespondSwap(req._id, 'reject')}
+                                  className="px-2.5 py-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded font-bold text-[10px] uppercase tracking-wider cursor-pointer"
+                                >
+                                  Decline
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="py-12 text-center text-slate-400 font-semibold text-xs border border-dashed border-slate-200 rounded-lg bg-slate-50/50">
+                      No active or past swap requests found.
+                    </div>
                   )}
                 </div>
               </div>

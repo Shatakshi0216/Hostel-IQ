@@ -6,10 +6,18 @@ const {
   createRoom,
   updateRoom,
   deleteRoom,
+  getSwapRequests,
+  createSwapRequest,
+  handleSwapRequest,
 } = require('../controllers/roomController');
 const { protect, authorize } = require('../middlewares/auth');
 
 router.use(protect); // Require authentication
+
+// Room Swapping Desk endpoints
+router.route('/swaps').get(getSwapRequests);
+router.route('/swaps/request').post(createSwapRequest);
+router.route('/swaps/request/:id').put(handleSwapRequest);
 
 router
   .route('/')

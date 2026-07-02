@@ -5,6 +5,7 @@ const {
   loginUser,
   getMe,
   getStudentsList,
+  getWardensList,
 } = require('../controllers/authController');
 const { protect } = require('../middlewares/auth');
 
@@ -12,5 +13,6 @@ router.post('/register', registerUser);
 router.post('/login', loginUser);
 router.get('/me', protect, getMe);
 router.get('/students', protect, getStudentsList);
+router.get('/wardens', protect, getWardensList);
 
 module.exports = router;

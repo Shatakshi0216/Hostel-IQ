@@ -40,11 +40,29 @@ const AdminDashboard = () => {
   const [editingCgpas, setEditingCgpas] = useState({});
   const [statusMessage, setStatusMessage] = useState({ type: '', text: '' });
 
+  // SuperAdmin tab and wardens listing states
+  const [adminTab, setAdminTab] = useState('overview');
+  const [wardensList, setWardensList] = useState([]);
+
+  const fetchWardens = async () => {
+    try {
+      const res = await api.get('/auth/wardens');
+      if (res.data.success) {
+        setWardensList(res.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch wardens list:', err);
+    }
+  };
+
   const fetchMetrics = async () => {
     try {
       const res = await api.get('/allocation/metrics');
       if (res.data.success) {
         setMetrics(res.data.data);
+        if (!res.data.data.isWarden) {
+          fetchWardens();
+        }
       }
     } catch (err) {
       console.error(err);
@@ -92,6 +110,27 @@ const AdminDashboard = () => {
     } catch (err) {
       console.error(err);
       setStatusMessage({ type: 'error', text: 'Failed to update CGPA threshold' });
+      setTimeout(() => setStatusMessage({ type: '', text: '' }), 4000);
+    }
+  };
+
+  const handleUpdateCohorts = async (hostelId, currentCohorts, cohort) => {
+    let newCohorts;
+    if (currentCohorts.includes(cohort)) {
+      newCohorts = currentCohorts.filter(c => c !== cohort);
+    } else {
+      newCohorts = [...currentCohorts, cohort];
+    }
+    try {
+      const res = await api.put(`/hostels/${hostelId}`, { allowedCohorts: newCohorts });
+      if (res.data.success) {
+        fetchMetrics();
+        setStatusMessage({ type: 'success', text: 'Hostel residing cohorts updated successfully!' });
+        setTimeout(() => setStatusMessage({ type: '', text: '' }), 4000);
+      }
+    } catch (err) {
+      console.error(err);
+      setStatusMessage({ type: 'error', text: 'Failed to update residing cohorts' });
       setTimeout(() => setStatusMessage({ type: '', text: '' }), 4000);
     }
   };
@@ -151,6 +190,31 @@ const AdminDashboard = () => {
             Sync Status
           </button>
         </header>
+
+        {!isWarden && (
+          <div className="bg-white border-b border-slate-200 px-8 py-3 flex gap-4 shrink-0">
+            <button
+              onClick={() => setAdminTab('overview')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition cursor-pointer ${
+                adminTab === 'overview'
+                  ? 'bg-slate-100 text-brand-teal shadow-sm border border-slate-200'
+                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+              }`}
+            >
+              Overview & Controls
+            </button>
+            <button
+              onClick={() => setAdminTab('wardens')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition cursor-pointer ${
+                adminTab === 'wardens'
+                  ? 'bg-slate-100 text-brand-teal shadow-sm border border-slate-200'
+                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+              }`}
+            >
+              Warden Directory
+            </button>
+          </div>
+        )}
 
         <main className="flex-1 overflow-y-auto p-8 bg-slate-50">
           {statusMessage.text && (
@@ -260,7 +324,7 @@ const AdminDashboard = () => {
           )}
 
           {/* SuperAdmin View: Hostel CGPA & Placement Controls */}
-          {!isWarden && (
+          {!isWarden && adminTab === 'overview' && (
             <div className="premium-card p-6 mb-8">
               <div className="mb-6">
                 <h4 className="text-sm font-bold text-slate-800">Hostel Placement & CGPA Control Board</h4>
@@ -275,6 +339,7 @@ const AdminDashboard = () => {
                       <th className="pb-3">Gender Restriction</th>
                       <th className="pb-3">Allocated Students</th>
                       <th className="pb-3">Resident Avg CGPA</th>
+                      <th className="pb-3">Allowed Cohorts (SuperAdmin)</th>
                       <th className="pb-3 pr-2 text-right">CGPA Threshold (SuperAdmin Only)</th>
                     </tr>
                   </thead>
@@ -298,6 +363,24 @@ const AdminDashboard = () => {
                             <span className="text-[10px] text-slate-400 font-medium ml-1">({Math.round((h.occupiedCount / h.calculatedCapacity) * 100)}% Full)</span>
                           </td>
                           <td className="py-4 font-bold text-emerald-600">{h.avgCgpa > 0 ? `${h.avgCgpa} CGPA` : 'N/A'}</td>
+                          <td className="py-4">
+                            <div className="grid grid-cols-2 gap-1.5 max-w-[200px]">
+                              {['BTech 1', 'BTech 2', 'BTech 3', 'BTech 4', 'MTech', 'MCA', 'PhD'].map(cohort => {
+                                const isChecked = h.allowedCohorts && h.allowedCohorts.includes(cohort);
+                                return (
+                                  <label key={cohort} className="flex items-center gap-1 text-[10px] font-semibold text-slate-600 cursor-pointer hover:text-slate-900 select-none">
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={() => handleUpdateCohorts(h._id, h.allowedCohorts || [], cohort)}
+                                      className="w-3 h-3 rounded border-slate-350 text-brand-teal focus:ring-brand-teal cursor-pointer accent-brand-teal"
+                                    />
+                                    <span>{cohort}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </td>
                           <td className="py-4 pr-2 text-right">
                             <div className="flex items-center justify-end gap-3">
                               <span className="text-[10px] font-bold text-slate-500">Min:</span>
@@ -321,6 +404,54 @@ const AdminDashboard = () => {
                         </tr>
                       );
                     })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* SuperAdmin View: Warden Management Directory */}
+          {!isWarden && adminTab === 'wardens' && (
+            <div className="premium-card p-6 mb-8 animate-in fade-in duration-200">
+              <div className="mb-6">
+                <h4 className="text-sm font-bold text-slate-800">Warden Management Directory</h4>
+                <p className="text-xs text-slate-400 mt-0.5">List of all 15 university warden records, phone numbers, and associated hostels</p>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      <th className="pb-3 pl-2">Warden Name</th>
+                      <th className="pb-3">Email Address</th>
+                      <th className="pb-3">Phone Number</th>
+                      <th className="pb-3 pr-2">Assigned Hostel Block</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                    {wardensList.length > 0 ? (
+                      wardensList.map((w) => (
+                        <tr key={w._id} className="hover:bg-slate-50/50 transition">
+                          <td className="py-4 pl-2 font-bold text-slate-900 flex items-center gap-2">
+                            <span className="w-8 h-8 rounded-full bg-brand-teal/10 flex items-center justify-center text-brand-teal font-black text-xs">
+                              {w.name.charAt(0) || 'W'}
+                            </span>
+                            {w.name}
+                          </td>
+                          <td className="py-4 font-semibold text-slate-500">{w.email}</td>
+                          <td className="py-4 font-bold text-slate-700">{w.phone || 'N/A'}</td>
+                          <td className="py-4 pr-2 font-semibold">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-brand-teal/10 text-brand-teal border border-brand-teal/20">
+                              {w.managedHostelId?.name || 'Unassigned'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={4} className="py-8 text-center text-slate-400 font-semibold">No wardens found. Run seeder to seed accounts.</td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>

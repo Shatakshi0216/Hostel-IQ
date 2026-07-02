@@ -154,10 +154,189 @@ const deleteRoom = async (req, res) => {
   }
 };
 
+const SwapRequest = require('../models/SwapRequest');
+const StudentProfile = require('../models/StudentProfile');
+const User = require('../models/User');
+
+// @desc    Get all swap requests involving this student
+// @route   GET /api/rooms/swaps
+// @access  Private (Student)
+const getSwapRequests = async (req, res) => {
+  try {
+    const requests = await SwapRequest.find({
+      $or: [
+        { requesterId: req.user._id },
+        { targetStudentId: req.user._id }
+      ]
+    })
+    .populate('requesterId', 'name email')
+    .populate('targetStudentId', 'name email');
+
+    res.json({ success: true, data: requests });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Create swap request
+// @route   POST /api/rooms/swaps/request
+// @access  Private (Student)
+const createSwapRequest = async (req, res) => {
+  const { targetEmail } = req.body;
+
+  try {
+    if (!targetEmail) {
+      return res.status(400).json({ success: false, message: 'Please provide target student email' });
+    }
+
+    const selfProfile = await StudentProfile.findOne({ userId: req.user._id });
+    if (!selfProfile || !selfProfile.allocatedRoomId) {
+      return res.status(400).json({ success: false, message: 'You must have an allocated room to initiate a swap' });
+    }
+
+    const targetUser = await User.findOne({ email: targetEmail.toLowerCase().trim() });
+    if (!targetUser) {
+      return res.status(404).json({ success: false, message: 'Classmate with this email was not found' });
+    }
+
+    if (targetUser._id.toString() === req.user._id.toString()) {
+      return res.status(400).json({ success: false, message: 'You cannot swap rooms with yourself' });
+    }
+
+    const targetProfile = await StudentProfile.findOne({ userId: targetUser._id });
+    if (!targetProfile || !targetProfile.allocatedRoomId) {
+      return res.status(400).json({ success: false, message: 'The selected student must have an allocated room to swap' });
+    }
+
+    // Check if target is same gender
+    if (selfProfile.gender !== targetProfile.gender) {
+      return res.status(400).json({ success: false, message: 'You can only swap rooms with someone of the same gender' });
+    }
+
+    // Check if pending request exists
+    const existing = await SwapRequest.findOne({
+      requesterId: req.user._id,
+      targetStudentId: targetUser._id,
+      status: 'Pending'
+    });
+
+    if (existing) {
+      return res.status(400).json({ success: false, message: 'A pending swap request already exists with this student' });
+    }
+
+    const swapRequest = await SwapRequest.create({
+      requesterId: req.user._id,
+      targetStudentId: targetUser._id,
+      status: 'Pending'
+    });
+
+    res.status(201).json({ success: true, data: swapRequest });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Approve/Reject swap request
+// @route   PUT /api/rooms/swaps/request/:id
+// @access  Private (Student)
+const handleSwapRequest = async (req, res) => {
+  const { action } = req.body; // 'approve' or 'reject'
+
+  try {
+    const swapRequest = await SwapRequest.findById(req.params.id);
+    if (!swapRequest) {
+      return res.status(404).json({ success: false, message: 'Swap request not found' });
+    }
+
+    if (swapRequest.targetStudentId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'You are not authorized to respond to this swap request' });
+    }
+
+    if (swapRequest.status !== 'Pending') {
+      return res.status(400).json({ success: false, message: 'This swap request has already been processed' });
+    }
+
+    if (action === 'reject') {
+      swapRequest.status = 'Rejected';
+      await swapRequest.save();
+      return res.json({ success: true, data: swapRequest });
+    }
+
+    if (action !== 'approve') {
+      return res.status(400).json({ success: false, message: 'Invalid action. Must be approve or reject' });
+    }
+
+    // Swap room allocation logic
+    const requesterProfile = await StudentProfile.findOne({ userId: swapRequest.requesterId });
+    const targetProfile = await StudentProfile.findOne({ userId: swapRequest.targetStudentId });
+
+    if (!requesterProfile || !requesterProfile.allocatedRoomId || !targetProfile || !targetProfile.allocatedRoomId) {
+      return res.status(400).json({ success: false, message: 'Both students must have active allocations to perform the swap' });
+    }
+
+    const roomA_Id = requesterProfile.allocatedRoomId;
+    const roomB_Id = targetProfile.allocatedRoomId;
+    const hostelA_Id = requesterProfile.allocatedHostelId;
+    const hostelB_Id = targetProfile.allocatedHostelId;
+
+    // Swap fields in profiles
+    requesterProfile.allocatedRoomId = roomB_Id;
+    requesterProfile.allocatedHostelId = hostelB_Id;
+    
+    targetProfile.allocatedRoomId = roomA_Id;
+    targetProfile.allocatedHostelId = hostelA_Id;
+
+    await requesterProfile.save();
+    await targetProfile.save();
+
+    // Update Room occupants lists
+    // Room A
+    await Room.findByIdAndUpdate(roomA_Id, {
+      $pull: { currentOccupants: swapRequest.requesterId },
+    });
+    await Room.findByIdAndUpdate(roomA_Id, {
+      $push: { currentOccupants: swapRequest.targetStudentId },
+    });
+
+    // Room B
+    await Room.findByIdAndUpdate(roomB_Id, {
+      $pull: { currentOccupants: swapRequest.targetStudentId },
+    });
+    await Room.findByIdAndUpdate(roomB_Id, {
+      $push: { currentOccupants: swapRequest.requesterId },
+    });
+
+    swapRequest.status = 'Approved';
+    await swapRequest.save();
+
+    // Cancel/Reject all other pending swap requests for both students
+    await SwapRequest.updateMany(
+      {
+        _id: { $ne: swapRequest._id },
+        $or: [
+          { requesterId: swapRequest.requesterId },
+          { targetStudentId: swapRequest.requesterId },
+          { requesterId: swapRequest.targetStudentId },
+          { targetStudentId: swapRequest.targetStudentId }
+        ],
+        status: 'Pending'
+      },
+      { status: 'Rejected' }
+    );
+
+    res.json({ success: true, message: 'Room swapped successfully', data: swapRequest });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getRooms,
   getRoomById,
   createRoom,
   updateRoom,
   deleteRoom,
+  getSwapRequests,
+  createSwapRequest,
+  handleSwapRequest,
 };

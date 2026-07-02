@@ -9,6 +9,7 @@ import StudentDashboard from './pages/student/StudentDashboard';
 import StudentQuiz from './pages/student/StudentQuiz';
 import StudentPreferences from './pages/student/StudentPreferences';
 import StudentComplaints from './pages/student/StudentComplaints';
+import StudentSwap from './pages/student/StudentSwap';
 
 // Guard for authenticated routes
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -95,6 +96,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['Student']}>
                 <StudentComplaints />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/student/swap"
+            element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <StudentSwap />
               </ProtectedRoute>
             }
           />

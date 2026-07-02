@@ -45,16 +45,16 @@ const seedData = async () => {
     // 3. Seed Hostels (10 Boys, 5 Girls with academic year rules)
     const boysHostels = [];
     for (let i = 1; i <= 10; i++) {
-      let allowedYear = 1;
+      let allowedCohorts = ['BTech 1'];
       let totalCapacity = 360; // 120 rooms * 3
       if (i > 3 && i <= 6) {
-        allowedYear = 2;
+        allowedCohorts = ['BTech 2'];
         totalCapacity = 240; // 120 rooms * 2
       } else if (i > 6 && i <= 8) {
-        allowedYear = 3;
+        allowedCohorts = ['BTech 3', 'MTech'];
         totalCapacity = 240; // 120 rooms * 2
       } else if (i > 8) {
-        allowedYear = 4;
+        allowedCohorts = ['BTech 4', 'PhD', 'MCA'];
         totalCapacity = 120; // 120 rooms * 1
       }
 
@@ -62,23 +62,23 @@ const seedData = async () => {
         name: `B${i}`,
         genderRestriction: 'Boys',
         totalCapacity,
-        allowedYear
+        allowedCohorts
       });
       boysHostels.push(h);
     }
 
     const girlsHostels = [];
     for (let i = 1; i <= 5; i++) {
-      let allowedYear = 1;
+      let allowedCohorts = ['BTech 1'];
       let totalCapacity = 360; // 120 rooms * 3
       if (i === 3) {
-        allowedYear = 2;
+        allowedCohorts = ['BTech 2'];
         totalCapacity = 240; // 120 rooms * 2
       } else if (i === 4) {
-        allowedYear = 3;
+        allowedCohorts = ['BTech 3', 'MTech', 'MCA'];
         totalCapacity = 240; // 120 rooms * 2
       } else if (i === 5) {
-        allowedYear = 4;
+        allowedCohorts = ['BTech 4', 'PhD'];
         totalCapacity = 120; // 120 rooms * 1
       }
 
@@ -86,7 +86,7 @@ const seedData = async () => {
         name: `G${i}`,
         genderRestriction: 'Girls',
         totalCapacity,
-        allowedYear
+        allowedCohorts
       });
       girlsHostels.push(h);
     }
@@ -96,35 +96,48 @@ const seedData = async () => {
     const admin = await User.create({
       name: 'Super Administrator',
       email: 'admin@hosteliq.com',
-      password: 'admin123',
+      password: 'admin123#2026',
       role: 'SuperAdmin',
+      phone: '+91 99999 88888'
     });
+
+    const boysWardenNames = [
+      'Dr. Satish Chandra', 'Dr. Ramesh Nair', 'Dr. Anand Kulkarni', 'Dr. Rajesh Gupta', 
+      'Dr. Vijay Deshmukh', 'Dr. Manoj Pandey', 'Dr. Harish Kumar', 'Dr. Sanjay Sen', 
+      'Dr. Sunil Verma', 'Dr. Nitin Mishra'
+    ];
 
     // Seed Warden for each Boys Hostel (B1-B10)
     for (let i = 0; i < boysHostels.length; i++) {
       const hostel = boysHostels[i];
       await User.create({
-        name: `Warden ${hostel.name}`,
+        name: boysWardenNames[i],
         email: `warden_${hostel.name.toLowerCase()}@hosteliq.com`,
-        password: `warden_${hostel.name.toLowerCase()}`,
+        password: `warden_${hostel.name.toLowerCase()}#2026`,
         role: 'HostelAdmin',
-        managedHostelId: hostel._id
+        managedHostelId: hostel._id,
+        phone: `+91 98765 4320${i + 1}`
       });
     }
+
+    const girlsWardenNames = [
+      'Dr. Shalini Iyer', 'Dr. Sunita Rao', 'Dr. Anjali Das', 'Dr. Preeti Goel', 'Dr. Tanvi Bose'
+    ];
 
     // Seed Warden for each Girls Hostel (G1-G5)
     for (let i = 0; i < girlsHostels.length; i++) {
       const hostel = girlsHostels[i];
       await User.create({
-        name: `Warden ${hostel.name}`,
+        name: girlsWardenNames[i],
         email: `warden_${hostel.name.toLowerCase()}@hosteliq.com`,
-        password: `warden_${hostel.name.toLowerCase()}`,
+        password: `warden_${hostel.name.toLowerCase()}#2026`,
         role: 'HostelAdmin',
-        managedHostelId: hostel._id
+        managedHostelId: hostel._id,
+        phone: `+91 98765 4321${i + 1}`
       });
     }
 
-    console.log('Admin & Wardens seeded (admin@hosteliq.com, warden_b1-b10, warden_g1-g5).');
+    console.log('Admin & Wardens seeded.');
 
     // 5. Seed Rooms dynamically (4 floors, 30 rooms per floor = 120 rooms per hostel)
     const roomsToCreate = [];
@@ -133,13 +146,20 @@ const seedData = async () => {
     allHostels.forEach((hostel) => {
       const blockName = hostel.genderRestriction === 'Boys' ? 'Block A' : 'Block B';
       
-      // Bed configuration per year:
-      // Year 1 -> 3 beds
-      // Year 2 & 3 -> 2 beds
-      // Year 4 -> 1 bed (single)
+      // Bed configuration per cohort:
+      // If allowedCohorts contains BTech 1 -> 3 beds
+      // If it contains BTech 4 or PhD but not BTech 1 or 2 -> 1 bed (single)
+      // Else -> 2 beds
       let capacity = 2;
-      if (hostel.allowedYear === 1) capacity = 3;
-      else if (hostel.allowedYear === 4) capacity = 1;
+      if (hostel.allowedCohorts.includes('BTech 1')) {
+        capacity = 3;
+      } else if (
+        (hostel.allowedCohorts.includes('BTech 4') || hostel.allowedCohorts.includes('PhD')) &&
+        !hostel.allowedCohorts.includes('BTech 1') &&
+        !hostel.allowedCohorts.includes('BTech 2')
+      ) {
+        capacity = 1;
+      }
 
       for (let floorNum = 1; floorNum <= 4; floorNum++) {
         for (let roomIdx = 1; roomIdx <= 30; roomIdx++) {
@@ -218,7 +238,7 @@ const seedData = async () => {
         region: rand(regions),
         gender: 'Male',
         floorPreference: rand(['Ground Floor', 'First Floor', 'Second Floor', 'No Preference']),
-        academicYear: rand([1, 2, 3, 4]),
+        academicYear: rand(['BTech 1', 'BTech 2', 'BTech 3', 'BTech 4', 'MTech', 'MCA', 'PhD']),
         category: rand(['General', 'SC_ST', 'OBC', 'EWS']),
         hasDisability: Math.random() < 0.05,
         hasScholarship: Math.random() < 0.15,
@@ -258,7 +278,7 @@ const seedData = async () => {
         region: rand(regions),
         gender: 'Female',
         floorPreference: rand(['Ground Floor', 'First Floor', 'Second Floor', 'No Preference']),
-        academicYear: rand([1, 2, 3, 4]),
+        academicYear: rand(['BTech 1', 'BTech 2', 'BTech 3', 'BTech 4', 'MTech', 'MCA', 'PhD']),
         category: rand(['General', 'SC_ST', 'OBC', 'EWS']),
         hasDisability: Math.random() < 0.05,
         hasScholarship: Math.random() < 0.15,

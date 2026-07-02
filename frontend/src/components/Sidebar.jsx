@@ -8,7 +8,8 @@ import {
   Sliders,
   HelpCircle,
   Users,
-  Flag
+  Flag,
+  RefreshCw
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -138,6 +139,19 @@ const Sidebar = () => {
             >
               <Flag className="w-4 h-4 shrink-0" />
               Conflict Desk
+            </NavLink>
+            <NavLink
+              to="/student/swap"
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all duration-150 ${
+                  isActive
+                    ? 'bg-slate-800 text-white'
+                    : 'text-slate-400 hover:bg-slate-850 hover:text-white'
+                }`
+              }
+            >
+              <RefreshCw className="w-4 h-4 shrink-0" />
+              Room Swap Desk
             </NavLink>
           </>
         )}

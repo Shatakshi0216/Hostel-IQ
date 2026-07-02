@@ -237,16 +237,19 @@ const StudentQuiz = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-555 mb-1.5">Academic Year</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-555 mb-1.5">Academic Year / Cohort</label>
                   <select
                     value={form.academicYear}
-                    onChange={(e) => setForm({ ...form, academicYear: Number(e.target.value) })}
+                    onChange={(e) => setForm({ ...form, academicYear: e.target.value })}
                     className="premium-input text-xs bg-white text-slate-800 cursor-pointer"
                   >
-                    <option value="1">1st Year (3-sharing rooms)</option>
-                    <option value="2">2nd Year (2-sharing rooms)</option>
-                    <option value="3">3rd Year (2-sharing rooms)</option>
-                    <option value="4">4th Year (Single rooms)</option>
+                    <option value="BTech 1">BTech 1st Year (3-sharing rooms)</option>
+                    <option value="BTech 2">BTech 2nd Year (2-sharing rooms)</option>
+                    <option value="BTech 3">BTech 3rd Year (2-sharing rooms)</option>
+                    <option value="BTech 4">BTech 4th Year (Single rooms)</option>
+                    <option value="MTech">MTech</option>
+                    <option value="MCA">MCA</option>
+                    <option value="PhD">PhD</option>
                   </select>
                 </div>
                 <div>

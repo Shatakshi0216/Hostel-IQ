@@ -153,7 +153,7 @@ const HostelAllocation = () => {
                       : 'text-slate-550 hover:text-brand-dark'
                   }`}
                 >
-                  Boys Section (H1)
+                  Boys Section (B1)
                 </button>
                 <button
                   onClick={() => setActiveTab('Girls')}
@@ -163,7 +163,7 @@ const HostelAllocation = () => {
                       : 'text-slate-550 hover:text-brand-dark'
                   }`}
                 >
-                  Girls Section (B1)
+                  Girls Section (G1)
                 </button>
               </div>
             </div>

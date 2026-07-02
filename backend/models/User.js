@@ -35,6 +35,10 @@ const userSchema = new mongoose.Schema(
       ref: 'Hostel',
       default: null,
     },
+    phone: {
+      type: String,
+      default: '',
+    },
   },
   {
     timestamps: true,
