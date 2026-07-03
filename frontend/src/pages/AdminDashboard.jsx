@@ -135,6 +135,33 @@ const AdminDashboard = () => {
     }
   };
 
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleRunRoomAllocation = async () => {
+    setSubmitting(true);
+    setStatusMessage({ type: '', text: '' });
+    try {
+      const res = await api.post('/matching/run');
+      if (res.data.success) {
+        setStatusMessage({ 
+          type: 'success', 
+          text: `Room and roommate matching completed! Paired ${res.data.totalMatchedStudents || 0} students into room seats.` 
+        });
+        fetchMetrics();
+        setTimeout(() => setStatusMessage({ type: '', text: '' }), 6000);
+      }
+    } catch (err) {
+      console.error(err);
+      setStatusMessage({ 
+        type: 'error', 
+        text: err.response?.data?.message || 'Failed to run roommate matching engine.' 
+      });
+      setTimeout(() => setStatusMessage({ type: '', text: '' }), 6000);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   useEffect(() => {
     fetchMetrics();
     fetchComplaints();
@@ -181,14 +208,27 @@ const AdminDashboard = () => {
             <Sparkles className="w-4 h-4 text-brand-teal" />
             {isWarden ? `Hostel Overview - ${metrics?.hostelName}` : "Overview Dashboard"}
           </h2>
-          <button 
-            onClick={() => { fetchMetrics(); fetchComplaints(); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-[10px] text-slate-650 font-bold uppercase tracking-wider rounded-lg transition"
-            title="Sync live server status"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            Sync Status
-          </button>
+          <div className="flex items-center gap-3">
+            {isWarden && (
+              <button
+                onClick={handleRunRoomAllocation}
+                disabled={submitting}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-teal hover:bg-teal-650 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition disabled:bg-slate-350 cursor-pointer shadow-sm hover:shadow"
+                title="Run roommate matching and room seat allocation for this hostel"
+              >
+                <Sliders className="w-3.5 h-3.5" />
+                {submitting ? 'Allocating Rooms...' : 'Run Room Allocation'}
+              </button>
+            )}
+            <button 
+              onClick={() => { fetchMetrics(); fetchComplaints(); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-[10px] text-slate-650 font-bold uppercase tracking-wider rounded-lg transition cursor-pointer"
+              title="Sync live server status"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Sync Status
+            </button>
+          </div>
         </header>
 
         {!isWarden && (
@@ -603,146 +643,146 @@ const AdminDashboard = () => {
               </div>
             </div>
           )}
+          {((!isWarden && adminTab === 'overview') || isWarden) && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+              {/* Allocation Status (Pie) */}
+              <div className="premium-card p-6 flex flex-col justify-between">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-800">
+                    {isWarden ? 'Bed Occupancy Status' : 'Allocation Status'}
+                  </h4>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {isWarden ? 'Proportion of occupied beds' : 'Proportion of student placement'}
+                  </p>
+                </div>
+                
+                <div className="h-56 relative flex items-center justify-center bg-slate-50/50 rounded-xl mt-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={charts.allocationDistribution || []}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={4}
+                        dataKey="value"
+                      >
+                        {(charts.allocationDistribution || []).map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '8px', color: '#1E293B' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  {/* Dynamic Inner Text */}
+                  <div className="absolute text-center">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">
+                      {isWarden ? 'Beds Occupied' : 'Total Assigned'}
+                    </span>
+                    <span className="text-2xl font-black text-slate-800 block mt-0.5">
+                      {isWarden ? (kpis.totalStudents || 0) : (kpis.totalOccupied || 0)}
+                    </span>
+                  </div>
+                </div>
 
-          {/* Pie Charts Slices Grid (No Room Bar Graphs) */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-            {/* Allocation Status (Pie) */}
-            <div className="premium-card p-6 flex flex-col justify-between">
-              <div>
-                <h4 className="text-sm font-bold text-slate-800">
-                  {isWarden ? 'Bed Occupancy Status' : 'Allocation Status'}
-                </h4>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  {isWarden ? 'Proportion of occupied beds' : 'Proportion of student placement'}
-                </p>
-              </div>
-              
-              <div className="h-56 relative flex items-center justify-center bg-slate-50/50 rounded-xl mt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={charts.allocationDistribution || []}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={4}
-                      dataKey="value"
-                    >
-                      {(charts.allocationDistribution || []).map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '8px', color: '#1E293B' }} />
-                  </PieChart>
-                </ResponsiveContainer>
-                {/* Dynamic Inner Text */}
-                <div className="absolute text-center">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">
-                    {isWarden ? 'Beds Occupied' : 'Total Assigned'}
-                  </span>
-                  <span className="text-2xl font-black text-slate-800 block mt-0.5">
-                    {isWarden ? (kpis.totalStudents || 0) : (kpis.totalOccupied || 0)}
-                  </span>
+                {/* Legends list */}
+                <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
+                  {(charts.allocationDistribution || []).map((item, index) => (
+                    <div key={item.name} className="flex items-center justify-between text-xs font-semibold text-slate-650">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}></div>
+                        <span>{item.name}</span>
+                      </div>
+                      <span className="text-slate-800 font-bold">{item.value}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {/* Legends list */}
-              <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
-                {(charts.allocationDistribution || []).map((item, index) => (
-                  <div key={item.name} className="flex items-center justify-between text-xs font-semibold text-slate-600">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}></div>
-                      <span>{item.name}</span>
+              {/* Academic Year Dist (Pie) */}
+              <div className="premium-card p-6 flex flex-col justify-between">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-800">Academic Year Cohorts</h4>
+                  <p className="text-xs text-slate-400 mt-0.5">Placement breakdown by year level</p>
+                </div>
+                
+                <div className="h-56 relative flex items-center justify-center bg-slate-50/50 rounded-xl mt-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={charts.yearDistribution || []}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={4}
+                        dataKey="value"
+                      >
+                        {(charts.yearDistribution || []).map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '8px', color: '#1E293B' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
+                  {(charts.yearDistribution || []).map((item, index) => (
+                    <div key={item.name} className="flex items-center justify-between text-xs font-semibold text-slate-600">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}></div>
+                        <span>{item.name}</span>
+                      </div>
+                      <span className="text-slate-800 font-bold">{item.value}</span>
                     </div>
-                    <span className="text-slate-800 font-bold">{item.value}</span>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              </div>
+
+              {/* Conflict Risks breakdown (Pie) */}
+              <div className="premium-card p-6 flex flex-col justify-between">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-800">Student Conflict Risk Profile</h4>
+                  <p className="text-xs text-slate-400 mt-0.5">Aggregated roommate suitability indexes</p>
+                </div>
+                
+                <div className="h-56 relative flex items-center justify-center bg-slate-50/50 rounded-xl mt-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={charts.conflictRiskDistribution || []}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={4}
+                        dataKey="value"
+                      >
+                        {(charts.conflictRiskDistribution || []).map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={RISK_COLORS[index % RISK_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '8px', color: '#1E293B' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
+                  {(charts.conflictRiskDistribution || []).map((item, index) => (
+                    <div key={item.name} className="flex items-center justify-between text-xs font-semibold text-slate-600">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: RISK_COLORS[index % RISK_COLORS.length] }}></div>
+                        <span>{item.name}</span>
+                      </div>
+                      <span className="text-slate-800 font-bold">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-
-            {/* Academic Year Dist (Pie) */}
-            <div className="premium-card p-6 flex flex-col justify-between">
-              <div>
-                <h4 className="text-sm font-bold text-slate-800">Academic Year Cohorts</h4>
-                <p className="text-xs text-slate-400 mt-0.5">Placement breakdown by year level</p>
-              </div>
-              
-              <div className="h-56 relative flex items-center justify-center bg-slate-50/50 rounded-xl mt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={charts.yearDistribution || []}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={4}
-                      dataKey="value"
-                    >
-                      {(charts.yearDistribution || []).map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '8px', color: '#1E293B' }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
-                {(charts.yearDistribution || []).map((item, index) => (
-                  <div key={item.name} className="flex items-center justify-between text-xs font-semibold text-slate-600">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}></div>
-                      <span>{item.name}</span>
-                    </div>
-                    <span className="text-slate-800 font-bold">{item.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Conflict Risks breakdown (Pie) */}
-            <div className="premium-card p-6 flex flex-col justify-between">
-              <div>
-                <h4 className="text-sm font-bold text-slate-800">Student Conflict Risk Profile</h4>
-                <p className="text-xs text-slate-400 mt-0.5">Aggregated roommate suitability indexes</p>
-              </div>
-              
-              <div className="h-56 relative flex items-center justify-center bg-slate-50/50 rounded-xl mt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={charts.conflictRiskDistribution || []}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={4}
-                      dataKey="value"
-                    >
-                      {(charts.conflictRiskDistribution || []).map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={RISK_COLORS[index % RISK_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '8px', color: '#1E293B' }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
-                {(charts.conflictRiskDistribution || []).map((item, index) => (
-                  <div key={item.name} className="flex items-center justify-between text-xs font-semibold text-slate-600">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: RISK_COLORS[index % RISK_COLORS.length] }}></div>
-                      <span>{item.name}</span>
-                    </div>
-                    <span className="text-slate-800 font-bold">{item.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          )}
 
           {/* Warden Scoped: Student List & Complaints Section */}
           {isWarden && (

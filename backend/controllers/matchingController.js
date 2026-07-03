@@ -252,7 +252,14 @@ const getStudentAllocationDetails = async (req, res) => {
 // @access  Private (Admins)
 const runMatchingEngine = async (req, res) => {
   try {
-    const result = await runRoommateAllocation();
+    const isWarden = req.user.role === 'HostelAdmin';
+    const hostelId = isWarden ? req.user.managedHostelId : null;
+
+    if (isWarden && !hostelId) {
+      return res.status(403).json({ success: false, message: 'Warden account is not linked to any hostel block.' });
+    }
+
+    const result = await runRoommateAllocation(hostelId);
     res.json(result);
   } catch (error) {
     console.error('Roommate Matching Error:', error);

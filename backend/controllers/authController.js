@@ -155,7 +155,19 @@ const getWardensList = async (req, res) => {
       .populate('managedHostelId', 'name')
       .select('name email phone managedHostelId');
 
-    res.json({ success: true, data: wardens });
+    const maskedWardens = wardens.map(w => {
+      const obj = w.toObject();
+      if (obj.phone) {
+        if (obj.phone.length >= 5) {
+          obj.phone = obj.phone.slice(0, -5) + 'XXXXX';
+        } else {
+          obj.phone = 'XXXXX';
+        }
+      }
+      return obj;
+    });
+
+    res.json({ success: true, data: maskedWardens });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

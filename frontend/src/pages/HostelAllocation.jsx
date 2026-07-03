@@ -43,22 +43,18 @@ const HostelAllocation = () => {
     setEngineLoading(true);
 
     try {
-      // Step 1: Run Hostel Allocation
+      // Step 1: Run Hostel Allocation Engine
       const hostelRes = await api.post('/allocation/run');
       
       if (hostelRes.data.success) {
-        // Step 2: Run Roommate Matching & Room Allocation
-        const roomRes = await api.post('/matching/run');
+        setMessage({
+          type: 'success',
+          text: `Hostel allocation completed! Assigned: ${hostelRes.data.allocatedCount} students, Waitlisted: ${hostelRes.data.waitlistCount} students. Room and roommate pairing must be executed by each hostel's Warden.`,
+        });
         
-        if (roomRes.data.success) {
-          setMessage({
-            type: 'success',
-            text: `Hostel and Room matching completed! Allocated: ${hostelRes.data.allocatedCount} students, Waitlisted: ${hostelRes.data.waitlistCount} students. Roommates paired: ${roomRes.data.totalMatchedStudents}.`,
-          });
-          // Refresh list
-          const rankRes = await api.get('/allocation/rankings');
-          setStudents(rankRes.data.data);
-        }
+        // Refresh rankings list preview
+        const rankRes = await api.get('/allocation/rankings');
+        setStudents(rankRes.data.data);
       }
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.message || 'Allocation Engine error occurred' });

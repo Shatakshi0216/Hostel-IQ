@@ -100,21 +100,30 @@ const calculateCompatibilityScore = (profA, profB) => {
 
 // Helper: Determine target room capacity by academic year
 const getTargetCapacity = (year) => {
-  if (year === 1) return 3; // 1st Year: 3-sharing
-  if (year === 4) return 1; // 4th Year: Single room
-  return 2; // 2nd/3rd Year: 2-sharing
+  if (year === 'BTech 1') return 3; // 1st Year: 3-sharing
+  if (year === 'BTech 4' || year === 'PhD') return 1; // 4th Year / PhD: Single room
+  return 2; // 2nd/3rd Year/others: 2-sharing
 };
 
 /**
  * Runs Graph-Based Roommate Matching & Room Allocation with Year Constraints
  */
-const runRoommateAllocation = async () => {
+const runRoommateAllocation = async (hostelId = null) => {
   // Reset room and roommate assignments first (Must run BEFORE querying documents into memory)
-  await Room.updateMany({}, { currentOccupants: [] });
-  await StudentProfile.updateMany({ status: 'Allocated' }, { allocatedRoomId: null });
+  if (hostelId) {
+    await Room.updateMany({ hostelId }, { currentOccupants: [] });
+    await StudentProfile.updateMany({ allocatedHostelId: hostelId }, { allocatedRoomId: null });
+  } else {
+    await Room.updateMany({}, { currentOccupants: [] });
+    await StudentProfile.updateMany({ status: 'Allocated' }, { allocatedRoomId: null });
+  }
 
   // 1. Fetch all allocated students and pre-calculate conflict risks
-  const allStudents = await StudentProfile.find({ status: 'Allocated' }).populate('userId');
+  const query = { status: 'Allocated' };
+  if (hostelId) {
+    query.allocatedHostelId = hostelId;
+  }
+  const allStudents = await StudentProfile.find(query).populate('userId');
   const students = allStudents.filter(s => s.userId);
   const studentRisks = {};
   
@@ -133,6 +142,7 @@ const runRoommateAllocation = async () => {
   students.forEach(student => {
     if (!student.allocatedHostelId) return;
     const hId = student.allocatedHostelId.toString();
+    if (hostelId && hId !== hostelId.toString()) return;
     if (!hostelGroups[hId]) hostelGroups[hId] = [];
     hostelGroups[hId].push(student);
   });

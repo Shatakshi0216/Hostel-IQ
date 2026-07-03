@@ -141,21 +141,17 @@ const getMetrics = async (req, res) => {
         { name: 'Empty Beds', value: totalCapacity - totalOccupied },
       ];
 
-      // 3. Student Distribution across academic years in this hostel
-      const year1 = await StudentProfile.countDocuments({ allocatedHostelId: hostelId, academicYear: 1 });
-      const year2 = await StudentProfile.countDocuments({ allocatedHostelId: hostelId, academicYear: 2 });
-      const year3 = await StudentProfile.countDocuments({ allocatedHostelId: hostelId, academicYear: 3 });
-      const year4 = await StudentProfile.countDocuments({ allocatedHostelId: hostelId, academicYear: 4 });
-      const yearDist = [
-        { name: '1st Year', value: year1 },
-        { name: '2nd Year', value: year2 },
-        { name: '3rd Year', value: year3 },
-        { name: '4th Year', value: year4 },
-      ];
+      // 3. Student Distribution across academic cohorts in this hostel
+      const cohorts = ['BTech 1', 'BTech 2', 'BTech 3', 'BTech 4', 'MTech', 'MCA', 'PhD'];
+      const yearDist = [];
+      for (let c of cohorts) {
+        const count = await StudentProfile.countDocuments({ allocatedHostelId: hostelId, academicYear: c });
+        yearDist.push({ name: c, value: count });
+      }
 
       const uniqueYears = [...new Set(hostelStudents.map(s => s.academicYear))].sort();
       const residingYearsStr = uniqueYears.length > 0 
-        ? uniqueYears.map(y => `${y === 1 ? '1st' : y === 2 ? '2nd' : y === 3 ? '3rd' : '4th'} Year`).join(', ')
+        ? uniqueYears.join(', ')
         : 'None';
 
       // 4. Build detailed student table data
@@ -315,17 +311,13 @@ const getMetrics = async (req, res) => {
       { name: 'Unallocated', value: unallocated },
     ];
 
-    // 4. Student Distribution across academic years
-    const year1 = await StudentProfile.countDocuments({ academicYear: 1 });
-    const year2 = await StudentProfile.countDocuments({ academicYear: 2 });
-    const year3 = await StudentProfile.countDocuments({ academicYear: 3 });
-    const year4 = await StudentProfile.countDocuments({ academicYear: 4 });
-    const yearDist = [
-      { name: '1st Year', value: year1 },
-      { name: '2nd Year', value: year2 },
-      { name: '3rd Year', value: year3 },
-      { name: '4th Year', value: year4 },
-    ];
+    // 4. Student Distribution across academic cohorts
+    const cohorts = ['BTech 1', 'BTech 2', 'BTech 3', 'BTech 4', 'MTech', 'MCA', 'PhD'];
+    const yearDist = [];
+    for (let c of cohorts) {
+      const count = await StudentProfile.countDocuments({ academicYear: c });
+      yearDist.push({ name: c, value: count });
+    }
 
     res.json({
       success: true,
