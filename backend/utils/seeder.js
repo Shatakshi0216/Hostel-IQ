@@ -200,7 +200,7 @@ const seedData = async () => {
       'Sweta Tiwari', 'Sunita Rao', 'Prema Lal', 'Deepali Deshmukh', 'Lalita Iyer'
     ];
 
-    const branches = ['CSE', 'ECE', 'ME', 'CE'];
+    const branches = ['CSE', 'ECE', 'MDS', 'Electrical', 'Mech', 'Civil', 'Chemical', 'MME'];
     const regions = ['Delhi', 'Maharashtra', 'Uttar Pradesh', 'Karnataka', 'Tamil Nadu', 'Rajasthan'];
     const sleep = ['early_bird', 'night_owl', 'flexible'];
     const wake = ['early', 'moderate', 'late'];
@@ -233,7 +233,6 @@ const seedData = async () => {
       await StudentProfile.create({
         userId: user._id,
         cgpa: parseFloat((6.0 + Math.random() * 4.0).toFixed(2)),
-        batch: rand(['2021', '2022', '2023', '2024']),
         branch: rand(branches),
         region: rand(regions),
         gender: 'Male',
@@ -273,7 +272,6 @@ const seedData = async () => {
       await StudentProfile.create({
         userId: user._id,
         cgpa: parseFloat((6.0 + Math.random() * 4.0).toFixed(2)),
-        batch: rand(['2021', '2022', '2023', '2024']),
         branch: rand(branches),
         region: rand(regions),
         gender: 'Female',

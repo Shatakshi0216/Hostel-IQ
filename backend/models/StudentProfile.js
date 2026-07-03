@@ -58,10 +58,11 @@ const studentProfileSchema = new mongoose.Schema(
       min: 0,
       max: 10
     },
-    batch: {
+    gender: {
       type: String,
+      enum: ['Male', 'Female'],
       required: true,
-      default: '2024'
+      default: 'Male'
     },
     branch: {
       type: String,

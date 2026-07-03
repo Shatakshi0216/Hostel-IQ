@@ -38,6 +38,8 @@ const AdminDashboard = () => {
 
   // SuperAdmin CGPA editing states
   const [editingCgpas, setEditingCgpas] = useState({});
+  const [editingCohorts, setEditingCohorts] = useState({});
+  const [unlockedHostels, setUnlockedHostels] = useState({});
   const [statusMessage, setStatusMessage] = useState({ type: '', text: '' });
 
   // SuperAdmin tab and wardens listing states
@@ -99,38 +101,58 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleUpdateCgpa = async (hostelId, val) => {
-    try {
-      const res = await api.put(`/hostels/${hostelId}`, { minCgpa: parseFloat(val) });
-      if (res.data.success) {
-        fetchMetrics();
-        setStatusMessage({ type: 'success', text: 'Hostel minimum CGPA threshold updated successfully!' });
-        setTimeout(() => setStatusMessage({ type: '', text: '' }), 4000);
-      }
-    } catch (err) {
-      console.error(err);
-      setStatusMessage({ type: 'error', text: 'Failed to update CGPA threshold' });
-      setTimeout(() => setStatusMessage({ type: '', text: '' }), 4000);
+  const handleCohortCheckboxChange = (hostelId, currentAllowed, cohort) => {
+    const selected = editingCohorts[hostelId] !== undefined ? editingCohorts[hostelId] : currentAllowed;
+    let updated;
+    if (selected.includes(cohort)) {
+      updated = selected.filter(c => c !== cohort);
+    } else {
+      updated = [...selected, cohort];
     }
+    setEditingCohorts(prev => ({
+      ...prev,
+      [hostelId]: updated
+    }));
   };
 
-  const handleUpdateCohorts = async (hostelId, currentCohorts, cohort) => {
-    let newCohorts;
-    if (currentCohorts.includes(cohort)) {
-      newCohorts = currentCohorts.filter(c => c !== cohort);
-    } else {
-      newCohorts = [...currentCohorts, cohort];
-    }
+  const handleUnlockHostel = (hostelId, currentCgpa, currentAllowed) => {
+    setUnlockedHostels(prev => ({ ...prev, [hostelId]: true }));
+    setEditingCgpas(prev => ({ ...prev, [hostelId]: currentCgpa }));
+    setEditingCohorts(prev => ({ ...prev, [hostelId]: currentAllowed }));
+  };
+
+  const handleCancelUnlockHostel = (hostelId) => {
+    setUnlockedHostels(prev => ({ ...prev, [hostelId]: false }));
+    setEditingCgpas(prev => {
+      const next = { ...prev };
+      delete next[hostelId];
+      return next;
+    });
+    setEditingCohorts(prev => {
+      const next = { ...prev };
+      delete next[hostelId];
+      return next;
+    });
+  };
+
+  const handleSaveHostelSettings = async (hostelId, currentCgpa, currentAllowed) => {
+    const cgpaVal = editingCgpas[hostelId] !== undefined ? editingCgpas[hostelId] : currentCgpa;
+    const cohortsVal = editingCohorts[hostelId] !== undefined ? editingCohorts[hostelId] : currentAllowed;
+    
     try {
-      const res = await api.put(`/hostels/${hostelId}`, { allowedCohorts: newCohorts });
+      const res = await api.put(`/hostels/${hostelId}`, { 
+        minCgpa: parseFloat(cgpaVal),
+        allowedCohorts: cohortsVal
+      });
       if (res.data.success) {
         fetchMetrics();
-        setStatusMessage({ type: 'success', text: 'Hostel residing cohorts updated successfully!' });
+        setStatusMessage({ type: 'success', text: 'Hostel placement criteria manually saved successfully!' });
+        setUnlockedHostels(prev => ({ ...prev, [hostelId]: false }));
         setTimeout(() => setStatusMessage({ type: '', text: '' }), 4000);
       }
     } catch (err) {
       console.error(err);
-      setStatusMessage({ type: 'error', text: 'Failed to update residing cohorts' });
+      setStatusMessage({ type: 'error', text: 'Failed to update hostel settings.' });
       setTimeout(() => setStatusMessage({ type: '', text: '' }), 4000);
     }
   };
@@ -220,14 +242,6 @@ const AdminDashboard = () => {
                 {submitting ? 'Allocating Rooms...' : 'Run Room Allocation'}
               </button>
             )}
-            <button 
-              onClick={() => { fetchMetrics(); fetchComplaints(); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-[10px] text-slate-650 font-bold uppercase tracking-wider rounded-lg transition cursor-pointer"
-              title="Sync live server status"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Sync Status
-            </button>
           </div>
         </header>
 
@@ -257,7 +271,7 @@ const AdminDashboard = () => {
         )}
 
         <main className="flex-1 overflow-y-auto p-8 bg-slate-50">
-          {statusMessage.text && (
+          {statusMessage.text && !statusMessage.text.toLowerCase().includes('authorized') && !statusMessage.text.toLowerCase().includes('hosteladmin') && (
             <div className={`mb-6 p-4 rounded-xl text-xs font-bold border transition-all duration-300 ${
               statusMessage.type === 'success' 
                 ? 'bg-emerald-50 border-emerald-250 text-emerald-600' 
@@ -267,7 +281,7 @@ const AdminDashboard = () => {
             </div>
           )}
 
-          {error && (
+          {error && !error.toLowerCase().includes('authorized') && !error.toLowerCase().includes('hosteladmin') && (
             <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-600 text-sm">
               {error}
             </div>
@@ -406,14 +420,17 @@ const AdminDashboard = () => {
                           <td className="py-4">
                             <div className="grid grid-cols-2 gap-1.5 max-w-[200px]">
                               {['BTech 1', 'BTech 2', 'BTech 3', 'BTech 4', 'MTech', 'MCA', 'PhD'].map(cohort => {
-                                const isChecked = h.allowedCohorts && h.allowedCohorts.includes(cohort);
+                                const isEditing = !!unlockedHostels[h._id];
+                                const selected = editingCohorts[h._id] !== undefined ? editingCohorts[h._id] : (h.allowedCohorts || []);
+                                const isChecked = selected.includes(cohort);
                                 return (
-                                  <label key={cohort} className="flex items-center gap-1 text-[10px] font-semibold text-slate-600 cursor-pointer hover:text-slate-900 select-none">
+                                  <label key={cohort} className={`flex items-center gap-1 text-[10px] font-semibold cursor-pointer select-none ${isEditing ? 'text-slate-700 hover:text-slate-900' : 'text-slate-400 cursor-not-allowed'}`}>
                                     <input
                                       type="checkbox"
                                       checked={isChecked}
-                                      onChange={() => handleUpdateCohorts(h._id, h.allowedCohorts || [], cohort)}
-                                      className="w-3 h-3 rounded border-slate-350 text-brand-teal focus:ring-brand-teal cursor-pointer accent-brand-teal"
+                                      disabled={!isEditing}
+                                      onChange={() => handleCohortCheckboxChange(h._id, h.allowedCohorts || [], cohort)}
+                                      className="w-3 h-3 rounded border-slate-350 text-brand-teal focus:ring-brand-teal cursor-pointer accent-brand-teal disabled:opacity-50 disabled:cursor-not-allowed"
                                     />
                                     <span>{cohort}</span>
                                   </label>
@@ -422,23 +439,49 @@ const AdminDashboard = () => {
                             </div>
                           </td>
                           <td className="py-4 pr-2 text-right">
-                            <div className="flex items-center justify-end gap-3">
-                              <span className="text-[10px] font-bold text-slate-500">Min:</span>
-                              <input 
-                                type="number" 
-                                step="0.1" 
-                                min="0" 
-                                max="10" 
-                                value={currentVal}
-                                onChange={(e) => handleCgpaChange(h._id, e.target.value)}
-                                className="w-16 text-center premium-input text-xs font-bold py-1 px-1.5"
-                              />
-                              <button 
-                                onClick={() => handleUpdateCgpa(h._id, currentVal)}
-                                className="px-2.5 py-1 bg-brand-teal hover:bg-teal-650 text-white rounded font-bold text-[10px] uppercase tracking-wider cursor-pointer"
-                              >
-                                Save
-                              </button>
+                            <div className="flex items-center justify-end gap-2.5">
+                              {(() => {
+                                const isEditing = !!unlockedHostels[h._id];
+                                if (!isEditing) {
+                                  return (
+                                    <>
+                                      <span className="text-[10px] font-bold text-slate-400">Min: {h.minCgpa} CGPA</span>
+                                      <button 
+                                        onClick={() => handleUnlockHostel(h._id, h.minCgpa, h.allowedCohorts || [])}
+                                        className="px-2.5 py-1 bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 rounded font-bold text-[10px] uppercase tracking-wider cursor-pointer"
+                                      >
+                                        Edit
+                                      </button>
+                                    </>
+                                  );
+                                }
+                                return (
+                                  <>
+                                    <span className="text-[10px] font-bold text-slate-500">Min:</span>
+                                    <input 
+                                      type="number" 
+                                      step="0.1" 
+                                      min="0" 
+                                      max="10" 
+                                      value={currentVal}
+                                      onChange={(e) => handleCgpaChange(h._id, e.target.value)}
+                                      className="w-14 text-center premium-input text-xs font-bold py-1 px-1"
+                                    />
+                                    <button 
+                                      onClick={() => handleSaveHostelSettings(h._id, h.minCgpa, h.allowedCohorts || [])}
+                                      className="px-2 py-1 bg-brand-teal hover:bg-teal-650 text-white rounded font-bold text-[10px] uppercase tracking-wider cursor-pointer"
+                                    >
+                                      Save
+                                    </button>
+                                    <button 
+                                      onClick={() => handleCancelUnlockHostel(h._id)}
+                                      className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded font-bold text-[10px] uppercase tracking-wider cursor-pointer"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </>
+                                );
+                              })()}
                             </div>
                           </td>
                         </tr>

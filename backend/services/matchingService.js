@@ -105,6 +105,13 @@ const getTargetCapacity = (year) => {
   return 2; // 2nd/3rd Year/others: 2-sharing
 };
 
+const mapFloorPreference = (pref) => {
+  if (pref === 'Ground Floor') return 1;
+  if (pref === 'First Floor') return 2;
+  if (pref === 'Second Floor') return 3;
+  return null;
+};
+
 /**
  * Runs Graph-Based Roommate Matching & Room Allocation with Year Constraints
  */
@@ -152,162 +159,61 @@ const runRoommateAllocation = async (hostelId = null) => {
     const group = hostelGroups[hostelId];
     const hostelRooms = rooms.filter(r => r.hostelId.toString() === hostelId);
 
-    // Segment students by their required capacities (1st Year -> 3, 4th Year -> 1, others -> 2)
-    const capacity1Students = group.filter(s => getTargetCapacity(s.academicYear) === 1);
-    const capacity2Students = group.filter(s => getTargetCapacity(s.academicYear) === 2);
-    const capacity3Students = group.filter(s => getTargetCapacity(s.academicYear) === 3);
+    // Segment roommate allocations strictly by academic year cohorts
+    const cohorts = ['BTech 1', 'BTech 2', 'BTech 3', 'BTech 4', 'MTech', 'MCA', 'PhD'];
 
-    // Get rooms by capacity
-    const roomsCap1 = hostelRooms.filter(r => r.capacity === 1);
-    const roomsCap2 = hostelRooms.filter(r => r.capacity === 2);
-    const roomsCap3 = hostelRooms.filter(r => r.capacity === 3);
-
-    // ==========================================
-    // CASE 1: 4th Year Students (Capacity 1 Rooms)
-    // ==========================================
-    // No roommate matching needed. Place them directly.
-    let r1Idx = 0;
-    for (let student of capacity1Students) {
-      if (r1Idx < roomsCap1.length) {
-        const room = roomsCap1[r1Idx];
-        room.currentOccupants.push(student.userId._id);
-        await room.save();
-
-        student.allocatedRoomId = room._id;
-        await student.save();
-        
-        totalMatched++;
-        r1Idx++;
-      } else {
-        // Fallback: search any other room with capacity 1
-        console.log(`No capacity 1 room left for student ${student.userId.name}`);
-      }
-    }
-
-    // ==========================================
-    // CASE 2: 2nd/3rd Year Students (Capacity 2 Rooms)
-    // ==========================================
-    // Step A: Build weighted graph edges for capacity 2 students
-    const edges2 = [];
-    for (let i = 0; i < capacity2Students.length; i++) {
-      for (let j = i + 1; j < capacity2Students.length; j++) {
-        const studentA = capacity2Students[i];
-        const studentB = capacity2Students[j];
-        const idA = studentA.userId._id.toString();
-        const idB = studentB.userId._id.toString();
-
-        let comp = calculateCompatibilityScore(
-          studentA.roommateCompatibilityProfile,
-          studentB.roommateCompatibilityProfile
-        );
-
-        // Conflict checks
-        const hasDirectConflict = await Complaint.exists({
-          $or: [
-            { reporterId: studentA.userId._id, accusedId: studentB.userId._id },
-            { reporterId: studentB.userId._id, accusedId: studentA.userId._id }
-          ]
-        });
-
-        const isAHighRisk = studentRisks[idA] && studentRisks[idA].category === 'High Risk';
-        const isBHighRisk = studentRisks[idB] && studentRisks[idB].category === 'High Risk';
-
-        if (hasDirectConflict || (isAHighRisk && isBHighRisk)) {
-          continue;
-        }
-
-        // Roommate preferences
-        const prefA = studentA.preferredRoommates || [];
-        const prefB = studentB.preferredRoommates || [];
-        const aPrefersB = prefA.map(id => id ? id.toString() : '').filter(Boolean).includes(idB);
-        const bPrefersA = prefB.map(id => id ? id.toString() : '').filter(Boolean).includes(idA);
-
-        let weight = comp;
-        if (aPrefersB && bPrefersA) weight += 50;
-        else if (aPrefersB || bPrefersA) weight += 20;
-
-        weight = Math.min(100, weight);
-        edges2.push({ u: studentA, v: studentB, weight });
-      }
-    }
-
-    // Run Greedy Matching
-    edges2.sort((a, b) => b.weight - a.weight);
-    const paired2 = new Set();
-    const matches2 = [];
-
-    for (let edge of edges2) {
-      const uId = edge.u.userId._id.toString();
-      const vId = edge.v.userId._id.toString();
-
-      if (!paired2.has(uId) && !paired2.has(vId)) {
-        paired2.add(uId);
-        paired2.add(vId);
-        matches2.push([edge.u, edge.v]);
-      }
-    }
-
-    // Remaining capacity 2 singles
-    const singles2 = capacity2Students.filter(s => !paired2.has(s.userId._id.toString()));
-    const pairedSingles2 = new Set();
-    for (let i = 0; i < singles2.length; i++) {
-      const sA = singles2[i];
-      const sAId = sA.userId._id.toString();
-      if (pairedSingles2.has(sAId)) continue;
-
-      let bestPartner = null;
-      let maxScore = -1;
-
-      for (let j = i + 1; j < singles2.length; j++) {
-        const sB = singles2[j];
-        const sBId = sB.userId._id.toString();
-        if (pairedSingles2.has(sBId)) continue;
-
-        if (studentRisks[sAId].category === 'High Risk' && studentRisks[sBId].category === 'High Risk') continue;
-
-        const comp = calculateCompatibilityScore(sA.roommateCompatibilityProfile, sB.roommateCompatibilityProfile);
-        if (comp > maxScore) {
-          maxScore = comp;
-          bestPartner = sB;
+    // Helper: Find an available room that can accommodate a group of a specific cohort
+    const findAvailableRoom = async (cohort, groupToPlace, targetCapacity) => {
+      const groupSize = groupToPlace.length;
+      
+      // Determine preferred floor number from the group
+      let preferredFloorNum = null;
+      for (let s of groupToPlace) {
+        if (s.floorPreference && s.floorPreference !== 'No Preference') {
+          preferredFloorNum = mapFloorPreference(s.floorPreference);
+          if (preferredFloorNum !== null) break;
         }
       }
 
-      if (bestPartner) {
-        pairedSingles2.add(sAId);
-        pairedSingles2.add(bestPartner.userId._id.toString());
-        matches2.push([sA, bestPartner]);
-      }
-    }
+      // Sort rooms: preferred floor first, then others
+      const sortedRooms = [...hostelRooms].sort((a, b) => {
+        if (preferredFloorNum !== null) {
+          const aPref = a.floor === preferredFloorNum ? 0 : 1;
+          const bPref = b.floor === preferredFloorNum ? 0 : 1;
+          if (aPref !== bPref) return aPref - bPref;
+        }
+        return a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true });
+      });
 
-    const trueSingles2 = singles2.filter(s => !pairedSingles2.has(s.userId._id.toString()));
+      for (let room of sortedRooms) {
+        const occupied = room.currentOccupants.length;
+        const availableBeds = room.capacity - occupied;
 
-    // Place pairs in capacity 2 rooms
-    let r2Idx = 0;
-    for (let pair of matches2) {
-      if (r2Idx < roomsCap2.length) {
-        const room = roomsCap2[r2Idx];
-        room.currentOccupants.push(pair[0].userId._id, pair[1].userId._id);
-        await room.save();
+        // Must have enough physical beds
+        if (availableBeds < groupSize) continue;
 
-        pair[0].allocatedRoomId = room._id;
-        pair[1].allocatedRoomId = room._id;
-        await pair[0].save();
-        await pair[1].save();
+        // If the room already has occupants, check cohort and target capacity limits
+        if (occupied > 0) {
+          const firstOccupantId = room.currentOccupants[0];
+          const firstOccupantProfile = await StudentProfile.findOne({ userId: firstOccupantId });
+          if (!firstOccupantProfile || firstOccupantProfile.academicYear !== cohort) {
+            continue;
+          }
 
-        totalMatched += 2;
-        r2Idx++;
-      } else {
-        trueSingles2.push(pair[0], pair[1]);
-      }
-    }
+          // Cannot exceed the cohort's target room capacity
+          if (occupied + groupSize > targetCapacity) {
+            continue;
+          }
+        } else {
+          // If empty room, the group size itself cannot exceed target capacity
+          if (groupSize > targetCapacity) {
+            continue;
+          }
+        }
 
-    // Place remaining singles
-    for (let student of trueSingles2) {
-      let allocatedRoom = null;
-      for (let room of roomsCap2) {
-        if (room.currentOccupants.length < room.capacity) {
-          // Avoid conflict checks
-          let hasConflict = false;
+        // Verify no conflicts with current occupants
+        let hasConflict = false;
+        for (let student of groupToPlace) {
           for (let occupantId of room.currentOccupants) {
             const complaint = await Complaint.exists({
               $or: [
@@ -322,172 +228,327 @@ const runRoommateAllocation = async (hostelId = null) => {
               break;
             }
           }
-          if (!hasConflict) {
-            allocatedRoom = room;
-            break;
+          if (hasConflict) break;
+        }
+
+        if (!hasConflict) {
+          return room;
+        }
+      }
+      return null;
+    };
+
+    for (let cohort of cohorts) {
+      const cohortStudents = group.filter(s => s.academicYear === cohort);
+      if (cohortStudents.length === 0) continue;
+
+      const cap = getTargetCapacity(cohort);
+
+      // ==========================================
+      // CASE 1: Single Room Cohorts (Capacity 1)
+      // ==========================================
+      if (cap === 1) {
+        for (let student of cohortStudents) {
+          const room = await findAvailableRoom(cohort, [student], 1);
+          if (room) {
+            room.currentOccupants.push(student.userId._id);
+            await room.save();
+
+            student.allocatedRoomId = room._id;
+            await student.save();
+            totalMatched++;
           }
         }
       }
 
-      if (allocatedRoom) {
-        allocatedRoom.currentOccupants.push(student.userId._id);
-        await allocatedRoom.save();
+      // ==========================================
+      // CASE 2: Double Room Cohorts (Capacity 2)
+      // ==========================================
+      else if (cap === 2) {
+        // Step A: Build weighted graph edges for this cohort
+        const edges2 = [];
+        for (let i = 0; i < cohortStudents.length; i++) {
+          for (let j = i + 1; j < cohortStudents.length; j++) {
+            const studentA = cohortStudents[i];
+            const studentB = cohortStudents[j];
+            const idA = studentA.userId._id.toString();
+            const idB = studentB.userId._id.toString();
 
-        student.allocatedRoomId = allocatedRoom._id;
-        await student.save();
-        totalMatched++;
-      }
-    }
+            const comp = calculateCompatibilityScore(
+              studentA.roommateCompatibilityProfile,
+              studentB.roommateCompatibilityProfile
+            );
 
-    // ==========================================
-    // CASE 3: 1st Year Students (Capacity 3 Rooms)
-    // ==========================================
-    // Step A: Build edges for capacity 3 students
-    const edges3 = [];
-    for (let i = 0; i < capacity3Students.length; i++) {
-      for (let j = i + 1; j < capacity3Students.length; j++) {
-        const studentA = capacity3Students[i];
-        const studentB = capacity3Students[j];
-        const idA = studentA.userId._id.toString();
-        const idB = studentB.userId._id.toString();
-
-        let comp = calculateCompatibilityScore(
-          studentA.roommateCompatibilityProfile,
-          studentB.roommateCompatibilityProfile
-        );
-
-        const hasDirectConflict = await Complaint.exists({
-          $or: [
-            { reporterId: studentA.userId._id, accusedId: studentB.userId._id },
-            { reporterId: studentB.userId._id, accusedId: studentA.userId._id }
-          ]
-        });
-
-        const isAHighRisk = studentRisks[idA] && studentRisks[idA].category === 'High Risk';
-        const isBHighRisk = studentRisks[idB] && studentRisks[idB].category === 'High Risk';
-
-        if (hasDirectConflict || (isAHighRisk && isBHighRisk)) {
-          continue;
-        }
-
-        const prefA = studentA.preferredRoommates || [];
-        const prefB = studentB.preferredRoommates || [];
-        const aPrefersB = prefA.map(id => id ? id.toString() : '').filter(Boolean).includes(idB);
-        const bPrefersA = prefB.map(id => id ? id.toString() : '').filter(Boolean).includes(idA);
-
-        let weight = comp;
-        if (aPrefersB && bPrefersA) weight += 50;
-        else if (aPrefersB || bPrefersA) weight += 20;
-
-        weight = Math.min(100, weight);
-        edges3.push({ u: studentA, v: studentB, weight });
-      }
-    }
-
-    // Run Greedy Matching
-    edges3.sort((a, b) => b.weight - a.weight);
-    const paired3 = new Set();
-    const matches3 = [];
-
-    for (let edge of edges3) {
-      const uId = edge.u.userId._id.toString();
-      const vId = edge.v.userId._id.toString();
-
-      if (!paired3.has(uId) && !paired3.has(vId)) {
-        paired3.add(uId);
-        paired3.add(vId);
-        matches3.push([edge.u, edge.v]);
-      }
-    }
-
-    // Remaining capacity 3 singles
-    const singles3 = capacity3Students.filter(s => !paired3.has(s.userId._id.toString()));
-    const pairedSingles3 = new Set();
-    for (let i = 0; i < singles3.length; i++) {
-      const sA = singles3[i];
-      const sAId = sA.userId._id.toString();
-      if (pairedSingles3.has(sAId)) continue;
-
-      let bestPartner = null;
-      let maxScore = -1;
-
-      for (let j = i + 1; j < singles3.length; j++) {
-        const sB = singles3[j];
-        const sBId = sB.userId._id.toString();
-        if (pairedSingles3.has(sBId)) continue;
-
-        if (studentRisks[sAId].category === 'High Risk' && studentRisks[sBId].category === 'High Risk') continue;
-
-        const comp = calculateCompatibilityScore(sA.roommateCompatibilityProfile, sB.roommateCompatibilityProfile);
-        if (comp > maxScore) {
-          maxScore = comp;
-          bestPartner = sB;
-        }
-      }
-
-      if (bestPartner) {
-        pairedSingles3.add(sAId);
-        pairedSingles3.add(bestPartner.userId._id.toString());
-        matches3.push([sA, bestPartner]);
-      }
-    }
-
-    const trueSingles3 = singles3.filter(s => !pairedSingles3.has(s.userId._id.toString()));
-
-    // Allocate matched pairs to rooms (capacity 3)
-    let r3Idx = 0;
-    for (let pair of matches3) {
-      if (r3Idx < roomsCap3.length) {
-        const room = roomsCap3[r3Idx];
-        room.currentOccupants.push(pair[0].userId._id, pair[1].userId._id);
-        await room.save();
-
-        pair[0].allocatedRoomId = room._id;
-        pair[1].allocatedRoomId = room._id;
-        await pair[0].save();
-        await pair[1].save();
-
-        totalMatched += 2;
-        r3Idx++;
-      } else {
-        trueSingles3.push(pair[0], pair[1]);
-      }
-    }
-
-    // Allocate remaining singles to rooms (fill the 3rd slot of capacity 3 rooms, or create new configurations)
-    for (let student of trueSingles3) {
-      let allocatedRoom = null;
-      for (let room of roomsCap3) {
-        if (room.currentOccupants.length < room.capacity) {
-          let hasConflict = false;
-          for (let occupantId of room.currentOccupants) {
-            const complaint = await Complaint.exists({
+            // Conflict checks
+            const hasDirectConflict = await Complaint.exists({
               $or: [
-                { reporterId: student.userId._id, accusedId: occupantId },
-                { reporterId: occupantId, accusedId: student.userId._id }
+                { reporterId: studentA.userId._id, accusedId: studentB.userId._id },
+                { reporterId: studentB.userId._id, accusedId: studentA.userId._id }
               ]
             });
-            const isStudentHighRisk = studentRisks[student.userId._id.toString()] && studentRisks[student.userId._id.toString()].category === 'High Risk';
-            const isOccupantHighRisk = studentRisks[occupantId.toString()] && studentRisks[occupantId.toString()].category === 'High Risk';
-            if (complaint || (isStudentHighRisk && isOccupantHighRisk)) {
-              hasConflict = true;
-              break;
+
+            const isAHighRisk = studentRisks[idA] && studentRisks[idA].category === 'High Risk';
+            const isBHighRisk = studentRisks[idB] && studentRisks[idB].category === 'High Risk';
+
+            if (hasDirectConflict || (isAHighRisk && isBHighRisk)) {
+              continue;
+            }
+
+            // Roommate preferences
+            const prefA = studentA.preferredRoommates || [];
+            const prefB = studentB.preferredRoommates || [];
+            const aPrefersB = prefA.map(id => id ? id.toString() : '').filter(Boolean).includes(idB);
+            const bPrefersA = prefB.map(id => id ? id.toString() : '').filter(Boolean).includes(idA);
+
+            let weight = comp;
+            
+            // Branch compatibility bonus (+15)
+            if (studentA.branch && studentB.branch && studentA.branch === studentB.branch) {
+              weight += 15;
+            }
+            
+            // Home region compatibility bonus (+15)
+            if (studentA.region && studentB.region && studentA.region === studentB.region) {
+              weight += 15;
+            }
+
+            // Roommate preference bonuses (carrying max weight, uncapped)
+            if (aPrefersB && bPrefersA) weight += 200;
+            else if (aPrefersB || bPrefersA) weight += 100;
+
+            edges2.push({ u: studentA, v: studentB, weight });
+          }
+        }
+
+        // Run Greedy Matching
+        edges2.sort((a, b) => b.weight - a.weight);
+        const paired2 = new Set();
+        const matches2 = [];
+
+        for (let edge of edges2) {
+          const uId = edge.u.userId._id.toString();
+          const vId = edge.v.userId._id.toString();
+
+          if (!paired2.has(uId) && !paired2.has(vId)) {
+            paired2.add(uId);
+            paired2.add(vId);
+            matches2.push([edge.u, edge.v]);
+          }
+        }
+
+        // Remaining cohort singles compatibility backup
+        const singles2 = cohortStudents.filter(s => !paired2.has(s.userId._id.toString()));
+        const pairedSingles2 = new Set();
+        for (let i = 0; i < singles2.length; i++) {
+          const sA = singles2[i];
+          const sAId = sA.userId._id.toString();
+          if (pairedSingles2.has(sAId)) continue;
+
+          let bestPartner = null;
+          let maxScore = -1;
+
+          for (let j = i + 1; j < singles2.length; j++) {
+            const sB = singles2[j];
+            const sBId = sB.userId._id.toString();
+            if (pairedSingles2.has(sBId)) continue;
+
+            if (studentRisks[sAId].category === 'High Risk' && studentRisks[sBId].category === 'High Risk') continue;
+
+            let comp = calculateCompatibilityScore(sA.roommateCompatibilityProfile, sB.roommateCompatibilityProfile);
+            
+            if (sA.branch && sB.branch && sA.branch === sB.branch) comp += 15;
+            if (sA.region && sB.region && sA.region === sB.region) comp += 15;
+
+            if (comp > maxScore) {
+              maxScore = comp;
+              bestPartner = sB;
             }
           }
-          if (!hasConflict) {
-            allocatedRoom = room;
-            break;
+
+          if (bestPartner) {
+            pairedSingles2.add(sAId);
+            pairedSingles2.add(bestPartner.userId._id.toString());
+            matches2.push([sA, bestPartner]);
+          }
+        }
+
+        const trueSingles2 = singles2.filter(s => !pairedSingles2.has(s.userId._id.toString()));
+
+        // Place pairs in capacity 2 rooms
+        for (let pair of matches2) {
+          const room = await findAvailableRoom(cohort, pair, 2);
+          if (room) {
+            room.currentOccupants.push(pair[0].userId._id, pair[1].userId._id);
+            await room.save();
+
+            pair[0].allocatedRoomId = room._id;
+            pair[1].allocatedRoomId = room._id;
+            await pair[0].save();
+            await pair[1].save();
+
+            totalMatched += 2;
+          } else {
+            trueSingles2.push(pair[0], pair[1]);
+          }
+        }
+
+        // Place remaining singles
+        for (let student of trueSingles2) {
+          const room = await findAvailableRoom(cohort, [student], 2);
+          if (room) {
+            room.currentOccupants.push(student.userId._id);
+            await room.save();
+
+            student.allocatedRoomId = room._id;
+            await student.save();
+            totalMatched++;
           }
         }
       }
 
-      if (allocatedRoom) {
-        allocatedRoom.currentOccupants.push(student.userId._id);
-        await allocatedRoom.save();
+      // ==========================================
+      // CASE 3: Triple Room Cohorts (Capacity 3)
+      // ==========================================
+      else if (cap === 3) {
+        // Step A: Build weighted graph edges for this cohort
+        const edges3 = [];
+        for (let i = 0; i < cohortStudents.length; i++) {
+          for (let j = i + 1; j < cohortStudents.length; j++) {
+            const studentA = cohortStudents[i];
+            const studentB = cohortStudents[j];
+            const idA = studentA.userId._id.toString();
+            const idB = studentB.userId._id.toString();
 
-        student.allocatedRoomId = allocatedRoom._id;
-        await student.save();
-        totalMatched++;
+            const comp = calculateCompatibilityScore(
+              studentA.roommateCompatibilityProfile,
+              studentB.roommateCompatibilityProfile
+            );
+
+            // Conflict checks
+            const hasDirectConflict = await Complaint.exists({
+              $or: [
+                { reporterId: studentA.userId._id, accusedId: studentB.userId._id },
+                { reporterId: studentB.userId._id, accusedId: studentA.userId._id }
+              ]
+            });
+
+            const isAHighRisk = studentRisks[idA] && studentRisks[idA].category === 'High Risk';
+            const isBHighRisk = studentRisks[idB] && studentRisks[idB].category === 'High Risk';
+
+            if (hasDirectConflict || (isAHighRisk && isBHighRisk)) {
+              continue;
+            }
+
+            // Roommate preferences
+            const prefA = studentA.preferredRoommates || [];
+            const prefB = studentB.preferredRoommates || [];
+            const aPrefersB = prefA.map(id => id ? id.toString() : '').filter(Boolean).includes(idB);
+            const bPrefersA = prefB.map(id => id ? id.toString() : '').filter(Boolean).includes(idA);
+
+            let weight = comp;
+            
+            // Branch compatibility bonus (+15)
+            if (studentA.branch && studentB.branch && studentA.branch === studentB.branch) {
+              weight += 15;
+            }
+            
+            // Home region compatibility bonus (+15)
+            if (studentA.region && studentB.region && studentA.region === studentB.region) {
+              weight += 15;
+            }
+
+            // Roommate preference bonuses (carrying max weight, uncapped)
+            if (aPrefersB && bPrefersA) weight += 200;
+            else if (aPrefersB || bPrefersA) weight += 100;
+
+            edges3.push({ u: studentA, v: studentB, weight });
+          }
+        }
+
+        // Run Greedy Matching
+        edges3.sort((a, b) => b.weight - a.weight);
+        const paired3 = new Set();
+        const matches3 = [];
+
+        for (let edge of edges3) {
+          const uId = edge.u.userId._id.toString();
+          const vId = edge.v.userId._id.toString();
+
+          if (!paired3.has(uId) && !paired3.has(vId)) {
+            paired3.add(uId);
+            paired3.add(vId);
+            matches3.push([edge.u, edge.v]);
+          }
+        }
+
+        // Remaining cohort singles compatibility backup
+        const singles3 = cohortStudents.filter(s => !paired3.has(s.userId._id.toString()));
+        const pairedSingles3 = new Set();
+        for (let i = 0; i < singles3.length; i++) {
+          const sA = singles3[i];
+          const sAId = sA.userId._id.toString();
+          if (pairedSingles3.has(sAId)) continue;
+
+          let bestPartner = null;
+          let maxScore = -1;
+
+          for (let j = i + 1; j < singles3.length; j++) {
+            const sB = singles3[j];
+            const sBId = sB.userId._id.toString();
+            if (pairedSingles3.has(sBId)) continue;
+
+            if (studentRisks[sAId].category === 'High Risk' && studentRisks[sBId].category === 'High Risk') continue;
+
+            let comp = calculateCompatibilityScore(sA.roommateCompatibilityProfile, sB.roommateCompatibilityProfile);
+            
+            if (sA.branch && sB.branch && sA.branch === sB.branch) comp += 15;
+            if (sA.region && sB.region && sA.region === sB.region) comp += 15;
+
+            if (comp > maxScore) {
+              maxScore = comp;
+              bestPartner = sB;
+            }
+          }
+
+          if (bestPartner) {
+            pairedSingles3.add(sAId);
+            pairedSingles3.add(bestPartner.userId._id.toString());
+            matches3.push([sA, bestPartner]);
+          }
+        }
+
+        const trueSingles3 = singles3.filter(s => !pairedSingles3.has(s.userId._id.toString()));
+
+        // Place pairs in capacity 3 rooms
+        for (let pair of matches3) {
+          const room = await findAvailableRoom(cohort, pair, 3);
+          if (room) {
+            room.currentOccupants.push(pair[0].userId._id, pair[1].userId._id);
+            await room.save();
+
+            pair[0].allocatedRoomId = room._id;
+            pair[1].allocatedRoomId = room._id;
+            await pair[0].save();
+            await pair[1].save();
+
+            totalMatched += 2;
+          } else {
+            trueSingles3.push(pair[0], pair[1]);
+          }
+        }
+
+        // Place remaining singles
+        for (let student of trueSingles3) {
+          const room = await findAvailableRoom(cohort, [student], 3);
+          if (room) {
+            room.currentOccupants.push(student.userId._id);
+            await room.save();
+
+            student.allocatedRoomId = room._id;
+            await student.save();
+            totalMatched++;
+          }
+        }
       }
     }
   }

@@ -466,16 +466,15 @@ const StudentPortal = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-slate-500 mb-1">Academic Year</label>
+                    <label className="block text-xs text-slate-500 mb-1">Academic Cohort</label>
                     <select
                       value={quizForm.academicYear}
-                      onChange={(e) => setQuizForm({ ...quizForm, academicYear: Number(e.target.value) })}
-                      className="premium-input text-xs"
+                      onChange={(e) => setQuizForm({ ...quizForm, academicYear: e.target.value })}
+                      className="premium-input text-xs bg-white text-slate-800 cursor-pointer"
                     >
-                      <option value="1">1st Year</option>
-                      <option value="2">2nd Year</option>
-                      <option value="3">3rd Year</option>
-                      <option value="4">4th Year</option>
+                      {['BTech 1', 'BTech 2', 'BTech 3', 'BTech 4', 'MTech', 'MCA', 'PhD'].map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
                     </select>
                   </div>
                   <div>

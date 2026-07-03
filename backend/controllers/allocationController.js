@@ -297,7 +297,8 @@ const getMetrics = async (req, res) => {
         occupiedCount: occupied,
         calculatedCapacity: hRooms.reduce((sum, r) => sum + r.capacity, 0) || hostel.totalCapacity,
         avgCgpa,
-        minCgpa: hostel.minCgpa || 0.0
+        minCgpa: hostel.minCgpa || 0.0,
+        allowedCohorts: hostel.allowedCohorts || []
       });
     }
 
@@ -351,10 +352,71 @@ const getMetrics = async (req, res) => {
   }
 };
 
+// @desc    Unallocate all students
+// @route   POST /api/allocation/unallocate
+// @access  Private (SuperAdmin only)
+const unallocateAll = async (req, res) => {
+  try {
+    // 1. Reset all student profiles
+    await StudentProfile.updateMany({}, {
+      allocatedHostelId: null,
+      allocatedRoomId: null,
+      status: 'Unallocated',
+      waitlistPosition: null
+    });
+
+    // 2. Clear all room occupants
+    await Room.updateMany({}, {
+      currentOccupants: []
+    });
+
+    res.json({ success: true, message: 'All student allocations have been cleared successfully.' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Manually assign hostel to a student
+// @route   PUT /api/allocation/student/:id
+// @access  Private (SuperAdmin only)
+const manualAllocateStudent = async (req, res) => {
+  const { allocatedHostelId } = req.body;
+
+  try {
+    const student = await StudentProfile.findById(req.params.id);
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student profile not found.' });
+    }
+
+    const previousHostelId = student.allocatedHostelId;
+    const targetHostelId = allocatedHostelId || null;
+
+    // Clear previous room booking if changing hostel
+    if (previousHostelId && previousHostelId.toString() !== targetHostelId?.toString()) {
+      if (student.allocatedRoomId) {
+        await Room.findByIdAndUpdate(student.allocatedRoomId, {
+          $pull: { currentOccupants: student.userId }
+        });
+        student.allocatedRoomId = null;
+      }
+    }
+
+    student.allocatedHostelId = targetHostelId;
+    student.status = targetHostelId ? 'Allocated' : 'Unallocated';
+    await student.save();
+
+    res.json({ success: true, message: 'Hostel assignment updated successfully.' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getRules,
   updateRules,
   triggerAllocation,
   getRankings,
   getMetrics,
+  unallocateAll,
+  manualAllocateStudent,
 };

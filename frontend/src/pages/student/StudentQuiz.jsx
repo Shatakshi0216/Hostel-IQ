@@ -14,12 +14,11 @@ const StudentQuiz = () => {
 
   const [form, setForm] = useState({
     cgpa: 7.0,
-    batch: '2024',
     branch: 'CSE',
     region: 'Delhi',
     gender: 'Male',
     floorPreference: 'No Preference',
-    academicYear: 1,
+    academicYear: 'BTech 1',
     category: 'General',
     hasDisability: false,
     hasScholarship: false,
@@ -46,12 +45,11 @@ const StudentQuiz = () => {
           const comp = prof.roommateCompatibilityProfile || {};
           setForm({
             cgpa: prof.cgpa || 7.0,
-            batch: prof.batch || '2024',
             branch: prof.branch || 'CSE',
             region: prof.region || 'Delhi',
             gender: prof.gender || 'Male',
             floorPreference: prof.floorPreference || 'No Preference',
-            academicYear: prof.academicYear || 1,
+            academicYear: prof.academicYear || 'BTech 1',
             category: prof.category || 'General',
             hasDisability: prof.hasDisability || false,
             hasScholarship: prof.hasScholarship || false,
@@ -172,26 +170,16 @@ const StudentQuiz = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-555 mb-1.5">Batch Year</label>
-                  <input
-                    type="text"
-                    value={form.batch}
-                    onChange={(e) => setForm({ ...form, batch: e.target.value })}
-                    placeholder="e.g. 2024"
-                    className="premium-input text-xs"
-                    required
-                  />
-                </div>
-                <div>
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-555 mb-1.5">Branch / Major</label>
-                  <input
-                    type="text"
+                  <select
                     value={form.branch}
                     onChange={(e) => setForm({ ...form, branch: e.target.value })}
-                    placeholder="e.g. CSE"
-                    className="premium-input text-xs"
-                    required
-                  />
+                    className="premium-input text-xs bg-white text-slate-800 cursor-pointer"
+                  >
+                    {['CSE', 'ECE', 'MDS', 'Electrical', 'Mech', 'Civil', 'Chemical', 'MME'].map(br => (
+                      <option key={br} value={br}>{br}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-555 mb-1.5">State / Region</label>

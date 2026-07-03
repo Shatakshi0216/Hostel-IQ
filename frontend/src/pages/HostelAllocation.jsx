@@ -3,11 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import api from '../utils/api';
-import { Play, CheckCircle, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Play, CheckCircle, AlertTriangle, ShieldCheck, Trash2 } from 'lucide-react';
 
 const HostelAllocation = () => {
   const navigate = useNavigate();
   const [students, setStudents] = useState([]);
+  const [hostelsList, setHostelsList] = useState([]);
+  const [changedPlacements, setChangedPlacements] = useState({});
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [engineLoading, setEngineLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -16,21 +19,87 @@ const HostelAllocation = () => {
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBranch, setFilterBranch] = useState('All');
-  const [filterBatch, setFilterBatch] = useState('All');
+  const [filterYear, setFilterYear] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
   const [minCgpa, setMinCgpa] = useState(0);
 
   const fetchData = async () => {
     try {
-      const studentsRes = await api.get('/allocation/rankings');
+      const [studentsRes, hostelsRes] = await Promise.all([
+        api.get('/allocation/rankings'),
+        api.get('/hostels')
+      ]);
+      
       if (studentsRes.data.success) {
         setStudents(studentsRes.data.data);
       }
+      if (hostelsRes.data.success) {
+        setHostelsList(hostelsRes.data.data);
+      }
     } catch (err) {
       console.error(err);
-      setMessage({ type: 'error', text: 'Failed to load student rankings' });
+      setMessage({ type: 'error', text: 'Failed to load student rankings and hostel list' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUnallocateAll = () => {
+    setShowResetConfirm(true);
+  };
+
+  const submitUnallocateAll = async () => {
+    setShowResetConfirm(false);
+    setMessage({ type: '', text: '' });
+    setEngineLoading(true);
+    try {
+      const res = await api.post('/allocation/unallocate');
+      if (res.data.success) {
+        setMessage({ type: 'success', text: 'All student allocations have been cleared successfully.' });
+        fetchData();
+      }
+    } catch (err) {
+      console.error(err);
+      setMessage({ type: 'error', text: err.response?.data?.message || 'Failed to clear allocations.' });
+    } finally {
+      setEngineLoading(false);
+    }
+  };
+
+  const handlePlacementDropdownChange = (studentId, value) => {
+    setChangedPlacements(prev => ({
+      ...prev,
+      [studentId]: value
+    }));
+  };
+
+  const handleCancelPlacementChange = (studentId) => {
+    setChangedPlacements(prev => {
+      const next = { ...prev };
+      delete next[studentId];
+      return next;
+    });
+  };
+
+  const handleManualAllocateStudent = async (studentId, allocatedHostelId) => {
+    setMessage({ type: '', text: '' });
+    setEngineLoading(true);
+    try {
+      const res = await api.put(`/allocation/student/${studentId}`, { allocatedHostelId });
+      if (res.data.success) {
+        setMessage({ type: 'success', text: 'Student hostel placement updated successfully.' });
+        setChangedPlacements(prev => {
+          const next = { ...prev };
+          delete next[studentId];
+          return next;
+        });
+        fetchData();
+      }
+    } catch (err) {
+      console.error(err);
+      setMessage({ type: 'error', text: err.response?.data?.message || 'Failed to update student placement.' });
+    } finally {
+      setEngineLoading(false);
     }
   };
 
@@ -112,23 +181,33 @@ const HostelAllocation = () => {
               </div>
             </div>
 
-            <button
-              onClick={handleRunAllocation}
-              disabled={engineLoading}
-              className="btn-primary py-3 px-6 flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:bg-slate-300 disabled:cursor-not-allowed shrink-0 font-bold tracking-wider text-xs uppercase"
-            >
-              {engineLoading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Processing Allocations...
-                </>
-              ) : (
-                <>
-                  <Play className="w-4 h-4 fill-current" />
-                  Execute Match Engines
-                </>
-              )}
-            </button>
+            <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+              <button
+                onClick={handleUnallocateAll}
+                disabled={engineLoading}
+                className="px-4 py-3 bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 rounded-lg flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed font-bold tracking-wider text-xs uppercase"
+              >
+                <Trash2 className="w-4 h-4" />
+                Unallocate All
+              </button>
+              <button
+                onClick={handleRunAllocation}
+                disabled={engineLoading}
+                className="btn-primary py-3 px-6 flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:bg-slate-300 disabled:cursor-not-allowed font-bold tracking-wider text-xs uppercase"
+              >
+                {engineLoading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Processing Allocations...
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4 fill-current" />
+                    Execute Match Engines
+                  </>
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Student Rankings preview */}
@@ -184,25 +263,22 @@ const HostelAllocation = () => {
                   className="premium-input py-1.5 text-xs bg-white text-slate-800 cursor-pointer"
                 >
                   <option value="All">All Branches</option>
-                  <option value="CSE">CSE</option>
-                  <option value="ECE">ECE</option>
-                  <option value="ME">ME</option>
-                  <option value="CE">CE</option>
+                  {['CSE', 'ECE', 'MDS', 'Electrical', 'Mech', 'Civil', 'Chemical', 'MME'].map(br => (
+                    <option key={br} value={br}>{br}</option>
+                  ))}
                 </select>
               </div>
               <div>
-                <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Batch</label>
+                <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Academic Cohort</label>
                 <select
-                  value={filterBatch}
-                  onChange={(e) => setFilterBatch(e.target.value)}
+                  value={filterYear}
+                  onChange={(e) => setFilterYear(e.target.value)}
                   className="premium-input py-1.5 text-xs bg-white text-slate-800 cursor-pointer"
                 >
-                  <option value="All">All Batches</option>
-                  <option value="2020">2020</option>
-                  <option value="2021">2021</option>
-                  <option value="2022">2022</option>
-                  <option value="2023">2023</option>
-                  <option value="2024">2024</option>
+                  <option value="All">All Cohorts</option>
+                  {['BTech 1', 'BTech 2', 'BTech 3', 'BTech 4', 'MTech', 'MCA', 'PhD'].map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -241,7 +317,6 @@ const HostelAllocation = () => {
                     <th className="px-6 py-4">Score</th>
                     <th className="px-6 py-4">CGPA</th>
                     <th className="px-6 py-4">Branch</th>
-                    <th className="px-6 py-4">Batch</th>
                     <th className="px-6 py-4">Year</th>
                     <th className="px-6 py-4">Hostel Placement</th>
                     <th className="px-6 py-4">Status</th>
@@ -250,20 +325,19 @@ const HostelAllocation = () => {
                 <tbody className="divide-y divide-slate-100 bg-white">
                   {students
                     .filter(student => {
-                      const name = student.userId?.name || '';
-                      const isFemale = /priya|neha|sita|rita|female|girl|ananya|pooja|sneha/i.test(name);
-                      const studentGender = isFemale ? 'Girls' : 'Boys';
-
+                      const studentGender = student.gender === 'Female' ? 'Girls' : 'Boys';
+ 
                       // Tab filter
                       if (studentGender !== activeTab) return false;
-
+ 
+                      const name = student.userId?.name || '';
                       const nameMatch = name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                                         student.userId?.email?.toLowerCase().includes(searchQuery.toLowerCase());
                       const branchMatch = filterBranch === 'All' || student.branch === filterBranch;
-                      const batchMatch = filterBatch === 'All' || student.batch === filterBatch;
+                      const yearMatch = filterYear === 'All' || student.academicYear === filterYear;
                       const statusMatch = filterStatus === 'All' || student.status === filterStatus;
                       const cgpaMatch = student.cgpa >= minCgpa;
-                      return nameMatch && branchMatch && batchMatch && statusMatch && cgpaMatch;
+                      return nameMatch && branchMatch && yearMatch && statusMatch && cgpaMatch;
                     })
                     .map((student, index) => (
                       <tr key={student._id} className="hover:bg-slate-50 transition duration-150">
@@ -275,10 +349,42 @@ const HostelAllocation = () => {
                         <td className="px-6 py-4 font-black text-brand-teal">{student.priorityScore}</td>
                         <td className="px-6 py-4 text-slate-600 font-semibold">{student.cgpa}</td>
                         <td className="px-6 py-4 text-slate-600">{student.branch}</td>
-                        <td className="px-6 py-4 text-slate-600">{student.batch}</td>
                         <td className="px-6 py-4 text-slate-600">{student.academicYear}</td>
-                        <td className="px-6 py-4 text-slate-700 font-semibold">
-                          {student.allocatedHostelId?.name || 'Unassigned'}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={changedPlacements[student._id] !== undefined ? changedPlacements[student._id] : (student.allocatedHostelId?._id || student.allocatedHostelId || '')}
+                              onChange={(e) => handlePlacementDropdownChange(student._id, e.target.value)}
+                              disabled={engineLoading}
+                              className="premium-input py-1 text-xs bg-white text-slate-800 cursor-pointer max-w-[140px] font-semibold border-slate-200"
+                            >
+                              <option value="">Unassigned</option>
+                              {hostelsList
+                                .filter(h => h.genderRestriction === (student.gender === 'Female' ? 'Girls' : 'Boys'))
+                                .map(h => (
+                                  <option key={h._id} value={h._id}>{h.name}</option>
+                                ))
+                              }
+                            </select>
+                            {changedPlacements[student._id] !== undefined && (
+                              <div className="flex gap-1 shrink-0">
+                                <button
+                                  onClick={() => handleManualAllocateStudent(student._id, changedPlacements[student._id])}
+                                  className="px-2 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded text-[10px] font-bold uppercase tracking-wider cursor-pointer shadow-sm"
+                                  title="Save placement override"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  onClick={() => handleCancelPlacementChange(student._id)}
+                                  className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-550 rounded text-[10px] font-bold uppercase tracking-wider cursor-pointer border border-slate-200"
+                                  title="Cancel changes"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4">
                           <span className={`px-2 py-0.5 rounded text-[9px] font-bold tracking-wide uppercase border ${
@@ -295,9 +401,7 @@ const HostelAllocation = () => {
                       </tr>
                     ))}
                   {students.filter(s => {
-                    const name = s.userId?.name || '';
-                    const isFemale = /priya|neha|sita|rita|female|girl|ananya|pooja|sneha/i.test(name);
-                    const studentGender = isFemale ? 'Girls' : 'Boys';
+                    const studentGender = s.gender === 'Female' ? 'Girls' : 'Boys';
                     return studentGender === activeTab;
                   }).length === 0 && (
                     <tr>
@@ -312,6 +416,34 @@ const HostelAllocation = () => {
           </div>
         </main>
       </div>
+      
+      {showResetConfirm && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white rounded-2xl border border-slate-200 shadow-2xl p-6 relative animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center gap-3 mb-4 text-rose-600">
+              <AlertTriangle className="w-6 h-6 shrink-0" />
+              <h3 className="text-base font-black uppercase tracking-wider">Unallocate All Students</h3>
+            </div>
+            <p className="text-xs text-slate-500 leading-relaxed mb-6">
+              Are you sure you want to unallocate ALL students and reset all room assignments in the database? This action is permanent and cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-650 font-bold rounded-xl text-xs uppercase tracking-wider cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitUnallocateAll}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-sm"
+              >
+                Yes, Reset All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

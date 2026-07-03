@@ -17,9 +17,9 @@ const calculateStudentScore = (student, rules) => {
   
   // Prefer first years and younger students
   let scoreYear = 40;
-  if (student.academicYear === 1) scoreYear = 100;
-  else if (student.academicYear === 2) scoreYear = 80;
-  else if (student.academicYear === 3) scoreYear = 60;
+  if (student.academicYear === 'BTech 1') scoreYear = 100;
+  else if (student.academicYear === 'BTech 2' || student.academicYear === 'MTech' || student.academicYear === 'MCA') scoreYear = 80;
+  else if (student.academicYear === 'BTech 3') scoreYear = 60;
   
   // Special status mapping
   let scoreSpecial = 0;

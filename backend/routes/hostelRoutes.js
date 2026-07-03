@@ -13,12 +13,12 @@ router.use(protect); // Require auth for all hostel routes
 
 router
   .route('/')
-  .get(getHostels)
+  .get(authorize('SuperAdmin', 'HostelAdmin'), getHostels)
   .post(authorize('SuperAdmin', 'HostelAdmin'), createHostel);
 
 router
   .route('/:id')
-  .get(getHostelById)
+  .get(authorize('SuperAdmin', 'HostelAdmin'), getHostelById)
   .put(authorize('SuperAdmin', 'HostelAdmin'), updateHostel)
   .delete(authorize('SuperAdmin', 'HostelAdmin'), deleteHostel);
 

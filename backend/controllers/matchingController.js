@@ -86,22 +86,34 @@ const updatePreferences = async (req, res) => {
       });
     }
 
-    // Verify all selected users are valid students
-    const validStudentsCount = await User.countDocuments({
-      _id: { $in: preferredRoommates },
-      role: 'Student',
-    });
-
-    if (validStudentsCount !== preferredRoommates.length) {
-      return res.status(400).json({
-        success: false,
-        message: 'One or more of the selected roommates is invalid',
-      });
-    }
-
     const profile = await StudentProfile.findOne({ userId: req.user._id });
     if (!profile) {
       return res.status(404).json({ success: false, message: 'Student profile not found' });
+    }
+
+    // Validate hostel allocation requirement
+    if (!profile.allocatedHostelId) {
+      return res.status(400).json({
+        success: false,
+        message: 'You cannot select roommate preferences because you have not been allocated to a hostel yet.'
+      });
+    }
+
+    // Verify all selected users are valid students and belong to the same hostel block
+    for (let prefId of preferredRoommates) {
+      const prefProfile = await StudentProfile.findOne({ userId: prefId });
+      if (!prefProfile) {
+        return res.status(400).json({
+          success: false,
+          message: 'One or more of the selected roommates is invalid.'
+        });
+      }
+      if (!prefProfile.allocatedHostelId || prefProfile.allocatedHostelId.toString() !== profile.allocatedHostelId.toString()) {
+        return res.status(400).json({
+          success: false,
+          message: 'The student you want to select does not belong to your allocated hostel.'
+        });
+      }
     }
 
     profile.preferredRoommates = preferredRoommates;
@@ -123,12 +135,14 @@ const getRoommateOptions = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Student profile not found' });
     }
 
-    let profileFilter = { userId: { $ne: req.user._id } };
-
-    // If student is allocated to a hostel, restrict roommate preferences to students allocated to the SAME hostel
-    if (student.allocatedHostelId) {
-      profileFilter.allocatedHostelId = student.allocatedHostelId;
+    if (!student.allocatedHostelId) {
+      return res.json({ success: true, data: [] });
     }
+
+    let profileFilter = { 
+      userId: { $ne: req.user._id },
+      allocatedHostelId: student.allocatedHostelId
+    };
 
     const profiles = await StudentProfile.find(profileFilter).populate('userId', 'name email');
     
