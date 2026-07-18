@@ -4,48 +4,103 @@
 
 @layer base {
   body {
-    @apply bg-brand-bg text-brand-dark font-sans antialiased;
+    @apply bg-brand-bg text-[#E2E8F0] font-sans antialiased selection:bg-luxury-indigo/30 selection:text-white;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(14, 165, 233, 0.08) 0px, transparent 50%),
+      radial-gradient(at 50% 100%, rgba(168, 85, 247, 0.05) 0px, transparent 50%);
+    background-attachment: fixed;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight text-white;
   }
 }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-brand-bg;
+  background: rgba(15, 23, 42, 0.3);
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-slate-300 rounded-full hover:bg-slate-400;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+/* Frosted Glass Panels */
+.glass-panel {
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  @apply rounded-2xl transition-all duration-300;
+}
+
+.glass-panel-hover:hover {
+  border-color: rgba(99, 102, 241, 0.3);
+  box-shadow: 0 12px 40px 0 rgba(99, 102, 241, 0.1);
 }
 
 /* Premium Card */
 .premium-card {
-  @apply bg-white border border-slate-200/80 rounded-xl shadow-sm transition-all duration-200;
+  @apply glass-panel glass-panel-hover;
 }
 
-.premium-card:hover {
-  @apply border-slate-300 shadow-md;
-}
-
-/* Custom Input */
+/* Premium Input */
 .premium-input {
-  @apply w-full px-3 py-2.5 bg-slate-50/50 border border-slate-200 rounded-lg text-sm transition-all duration-150 outline-none text-slate-800 placeholder-slate-400;
+  @apply w-full px-4 py-3 bg-slate-900/40 border border-white/10 rounded-xl text-sm transition-all duration-200 outline-none text-white placeholder-slate-500 focus:border-luxury-indigo/60 focus:ring-2 focus:ring-luxury-indigo/20 focus:bg-slate-950/60;
 }
 
-.premium-input:focus {
-  @apply border-brand-teal ring-2 ring-brand-teal/10 bg-white;
-}
-
-/* Buttons */
+/* Glow Buttons */
 .btn-primary {
-  @apply px-4 py-2.5 bg-gradient-to-r from-brand-teal to-blue-600 text-white hover:brightness-105 rounded-lg text-sm font-semibold transition-all duration-150 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply px-5 py-3 bg-gradient-to-r from-luxury-indigo via-[#7C3AED] to-brand-teal text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all duration-300 cursor-pointer shadow-lg shadow-luxury-indigo/25 hover:shadow-xl hover:shadow-luxury-indigo/40 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
 }
 
 .btn-secondary {
-  @apply px-4 py-2.5 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply px-5 py-3 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white border border-white/10 hover:border-white/20 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+/* Gradients text utility */
+.text-gradient-primary {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-slate-400;
+}
+
+.text-gradient-accent {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-luxury-indigo via-[#8B5CF6] to-brand-teal;
+}
+
+/* Shimmer Loading Effect */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 25%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-animation 1.5s infinite;
+}
+
+@keyframes shimmer-animation {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }

@@ -220,13 +220,13 @@ const AdminDashboard = () => {
   );
 
   return (
-    <div className="flex h-screen bg-brand-bg overflow-hidden text-slate-800">
+    <div className="flex h-screen bg-brand-bg overflow-hidden text-slate-100">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         
         {/* Optimized small sync header */}
-        <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-8 shrink-0">
-          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+        <header className="h-16 border-b border-white/5 bg-slate-950/40 backdrop-blur-md flex items-center justify-between px-8 shrink-0">
+          <h2 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-brand-teal" />
             {isWarden ? `Hostel Overview - ${metrics?.hostelName}` : "Overview Dashboard"}
           </h2>
@@ -235,7 +235,7 @@ const AdminDashboard = () => {
               <button
                 onClick={handleRunRoomAllocation}
                 disabled={submitting}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-teal hover:bg-teal-650 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition disabled:bg-slate-350 cursor-pointer shadow-sm hover:shadow"
+                className="btn-primary py-2 px-4 flex items-center gap-1.5"
                 title="Run roommate matching and room seat allocation for this hostel"
               >
                 <Sliders className="w-3.5 h-3.5" />
@@ -246,13 +246,13 @@ const AdminDashboard = () => {
         </header>
 
         {!isWarden && (
-          <div className="bg-white border-b border-slate-200 px-8 py-3 flex gap-4 shrink-0">
+          <div className="bg-slate-950/30 border-b border-white/5 px-8 py-3 flex gap-4 shrink-0">
             <button
               onClick={() => setAdminTab('overview')}
               className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition cursor-pointer ${
                 adminTab === 'overview'
-                  ? 'bg-slate-100 text-brand-teal shadow-sm border border-slate-200'
-                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                  ? 'bg-white/10 text-white shadow border border-white/10'
+                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
               }`}
             >
               Overview & Controls
@@ -261,8 +261,8 @@ const AdminDashboard = () => {
               onClick={() => setAdminTab('wardens')}
               className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition cursor-pointer ${
                 adminTab === 'wardens'
-                  ? 'bg-slate-100 text-brand-teal shadow-sm border border-slate-200'
-                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                  ? 'bg-white/10 text-white shadow border border-white/10'
+                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
               }`}
             >
               Warden Directory
@@ -270,19 +270,19 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        <main className="flex-1 overflow-y-auto p-8 bg-slate-50">
+        <main className="flex-1 overflow-y-auto p-8 bg-transparent">
           {statusMessage.text && !statusMessage.text.toLowerCase().includes('authorized') && !statusMessage.text.toLowerCase().includes('hosteladmin') && (
             <div className={`mb-6 p-4 rounded-xl text-xs font-bold border transition-all duration-300 ${
               statusMessage.type === 'success' 
-                ? 'bg-emerald-50 border-emerald-250 text-emerald-600' 
-                : 'bg-rose-50 border-rose-200 text-rose-600'
+                ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400' 
+                : 'bg-rose-500/10 border-rose-500/25 text-rose-400'
             }`}>
               {statusMessage.type === 'success' ? '✓ ' : '⚠️ '}{statusMessage.text}
             </div>
           )}
 
           {error && !error.toLowerCase().includes('authorized') && !error.toLowerCase().includes('hosteladmin') && (
-            <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-600 text-sm">
+            <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-350 text-xs">
               {error}
             </div>
           )}
@@ -292,72 +292,72 @@ const AdminDashboard = () => {
             {/* Total Students */}
             <div className="premium-card p-6 flex items-center justify-between">
               <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">
                   {isWarden ? 'Hostel Students' : 'Total Students'}
                 </span>
-                <h3 className="text-2xl font-black text-slate-900 mt-1.5">{kpis.totalStudents || 0}</h3>
-                <span className="text-xs text-slate-500 mt-2 block font-medium">
+                <h3 className="text-2xl font-black text-white mt-1.5">{kpis.totalStudents || 0}</h3>
+                <span className="text-[10px] text-slate-400 mt-2 block font-semibold">
                   {isWarden ? 'Currently Allocated' : 'Registered Profiles'}
                 </span>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-500">
-                <Users className="w-5 h-5" />
+              <div className="w-11 h-11 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 shadow-sm">
+                <Users className="w-4 h-4" />
               </div>
             </div>
 
             {/* Total Hostels / Total Rooms */}
             <div className="premium-card p-6 flex items-center justify-between">
               <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">
                   {isWarden ? 'Total Rooms' : 'Total Hostels'}
                 </span>
-                <h3 className="text-2xl font-black text-slate-900 mt-1.5">
+                <h3 className="text-2xl font-black text-white mt-1.5">
                   {isWarden ? kpis.totalRooms : kpis.totalHostels || 0}
                 </h3>
-                <span className="text-xs text-slate-500 mt-2 block font-medium">
+                <span className="text-[10px] text-slate-400 mt-2 block font-semibold">
                   {isWarden ? 'Layout Rooms' : 'Gender Segregated'}
                 </span>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500">
-                <Building className="w-5 h-5" />
+              <div className="w-11 h-11 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shadow-sm">
+                <Building className="w-4 h-4" />
               </div>
             </div>
 
             {/* Occupancy Rate */}
             <div className="premium-card p-6 flex items-center justify-between">
               <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">
                   {isWarden ? 'Beds Occupancy' : 'Occupancy Rate'}
                 </span>
-                <h3 className="text-2xl font-black text-slate-900 mt-1.5">{kpis.occupancyRate || 0}%</h3>
-                <div className="w-24 bg-slate-100 border border-slate-200 rounded-full h-2 mt-2.5 overflow-hidden">
+                <h3 className="text-2xl font-black text-white mt-1.5">{kpis.occupancyRate || 0}%</h3>
+                <div className="w-24 bg-white/5 border border-white/5 rounded-full h-1.5 mt-3 overflow-hidden">
                   <div 
-                    className="bg-brand-teal h-full rounded-full" 
+                    className="bg-gradient-to-r from-luxury-indigo to-brand-teal h-full rounded-full" 
                     style={{ width: `${Math.min(100, kpis.occupancyRate || 0)}%` }}
                   ></div>
                 </div>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center text-brand-teal">
-                <Percent className="w-5 h-5" />
+              <div className="w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-450 shadow-sm">
+                <Percent className="w-4 h-4" />
               </div>
             </div>
 
             {/* Waitlist Queue / Active Conflicts */}
             <div className="premium-card p-6 flex items-center justify-between">
               <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">
                   {isWarden ? 'Active Conflicts' : 'Waitlist Count'}
                 </span>
-                <h3 className="text-2xl font-black text-slate-900 mt-1.5">
+                <h3 className="text-2xl font-black text-white mt-1.5">
                   {isWarden ? kpis.openComplaintsCount : kpis.waitlistCount || 0}
                 </h3>
-                <span className="text-xs text-slate-500 mt-2 block flex items-center gap-1 font-medium">
+                <span className="text-[10px] mt-2 block flex items-center gap-1 font-semibold text-slate-400">
                   <Clock className="w-3.5 h-3.5 text-brand-warning shrink-0" />
                   {isWarden ? 'Needs Resolution' : `${kpis.openComplaintsCount || 0} Open Conflicts`}
                 </span>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-brand-warning">
-                <AlertOctagon className="w-5 h-5" />
+              <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-brand-warning shadow-sm">
+                <AlertOctagon className="w-4 h-4" />
               </div>
             </div>
           </div>
@@ -546,20 +546,20 @@ const AdminDashboard = () => {
             <div className="premium-card p-6 mb-8">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <div>
-                  <h4 className="text-sm font-bold text-slate-800">Visual Room Layout & Occupancy Map</h4>
+                  <h4 className="text-sm font-bold text-white">Visual Room Layout & Occupancy Map</h4>
                   <p className="text-xs text-slate-400 mt-0.5">Click any room seat to inspect residents and roommate details</p>
                 </div>
                 
                 {/* Floor tabs */}
-                <div className="flex gap-1.5 p-1 bg-slate-100 border border-slate-200 rounded-lg self-start">
+                <div className="flex gap-1.5 p-1 bg-slate-900/60 border border-white/5 rounded-xl self-start">
                   {[1, 2, 3, 4].map(fl => (
                     <button
                       key={fl}
                       onClick={() => setActiveFloor(fl)}
-                      className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition cursor-pointer ${
                         activeFloor === fl 
-                          ? 'bg-white text-brand-teal shadow-sm' 
-                          : 'text-slate-500 hover:text-slate-700'
+                          ? 'bg-gradient-to-r from-luxury-indigo to-brand-teal text-white shadow-md border border-white/10' 
+                          : 'text-slate-400 hover:text-white hover:bg-white/5'
                       }`}
                     >
                       Floor {fl}
@@ -569,17 +569,17 @@ const AdminDashboard = () => {
               </div>
 
               {/* Color Coding Legends */}
-              <div className="flex gap-4 mb-6 pb-4 border-b border-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3.5 h-3.5 rounded bg-emerald-500 border border-emerald-600"></div>
+              <div className="flex flex-wrap gap-4 mb-6 pb-4 border-b border-white/5 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                <div className="flex items-center gap-2">
+                  <div className="w-3.5 h-3.5 rounded bg-emerald-500/10 border border-emerald-500/20"></div>
                   <span>Empty Room (Green)</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3.5 h-3.5 rounded bg-amber-400 border border-amber-500"></div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3.5 h-3.5 rounded bg-amber-500/10 border border-amber-500/20"></div>
                   <span>Partially Filled (Yellow)</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3.5 h-3.5 rounded bg-rose-500 border border-rose-600"></div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3.5 h-3.5 rounded bg-rose-500/10 border border-rose-500/20"></div>
                   <span>Fully Occupied (Red)</span>
                 </div>
               </div>
@@ -590,24 +590,24 @@ const AdminDashboard = () => {
                   .filter(r => r.floor === activeFloor)
                   .sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true }))
                   .map(room => {
-                    let btnColor = 'bg-emerald-500 hover:bg-emerald-600 text-white border border-emerald-600';
+                    let btnColor = 'bg-emerald-500/10 text-emerald-450 border border-emerald-500/15 hover:bg-emerald-500/20';
                     if (room.state === 'partial') {
-                      btnColor = 'bg-amber-400 hover:bg-amber-500 text-slate-900 border border-amber-500';
+                      btnColor = 'bg-amber-500/10 text-amber-400 border border-amber-500/15 hover:bg-amber-500/20';
                     } else if (room.state === 'full') {
-                      btnColor = 'bg-rose-500 hover:bg-rose-600 text-white border border-rose-600';
+                      btnColor = 'bg-rose-500/10 text-rose-450 border border-rose-500/15 hover:bg-rose-500/20';
                     }
 
                     return (
                       <button
                         key={room._id}
                         onClick={() => setSelectedRoom(room)}
-                        className={`flex flex-col items-center justify-between p-2.5 rounded-xl cursor-pointer font-bold shadow-sm hover:shadow transition-all duration-150 transform hover:-translate-y-0.5 ${btnColor}`}
+                        className={`flex flex-col items-center justify-between p-2.5 rounded-xl cursor-pointer font-bold shadow-sm hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5 ${btnColor}`}
                       >
-                        <span className="text-[10px] tracking-widest uppercase opacity-75">Room</span>
+                        <span className="text-[9px] tracking-widest uppercase opacity-75">Room</span>
                         <span className="text-sm font-black mt-0.5">{room.roomNumber}</span>
-                        <div className="flex items-center gap-0.5 mt-1.5 text-[9px] font-black uppercase tracking-wider px-1 py-0.5 bg-black/10 rounded">
-                          <Bed className="w-2.5 h-2.5" />
-                          <span>{room.occupantsCount}/{room.capacity}</span>
+                        <div className="flex items-center gap-0.5 mt-1.5 text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 bg-black/20 rounded">
+                           <Bed className="w-2.5 h-2.5" />
+                           <span>{room.occupantsCount}/{room.capacity}</span>
                         </div>
                       </button>
                     );
@@ -618,21 +618,21 @@ const AdminDashboard = () => {
 
           {/* Popup Modal for Selected Room */}
           {selectedRoom && (
-            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="w-full max-w-lg bg-white rounded-2xl border border-slate-200 shadow-2xl p-6 relative animate-in fade-in zoom-in duration-200">
+            <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="w-full max-w-lg glass-panel p-6 relative z-10 border border-white/10 shadow-2xl shadow-black/50 animate-in fade-in zoom-in duration-200">
                 <button 
                   onClick={() => setSelectedRoom(null)}
-                  className="absolute top-4 right-4 text-slate-400 hover:text-slate-650 cursor-pointer font-bold text-lg"
+                  className="absolute top-4 right-4 text-slate-500 hover:text-white cursor-pointer font-bold text-lg"
                 >
                   ✕
                 </button>
 
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-brand-teal/10 flex items-center justify-center text-brand-teal">
+                  <div className="w-10 h-10 rounded-xl bg-brand-teal/10 flex items-center justify-center text-brand-teal border border-brand-teal/15">
                     <Bed className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">
+                    <h3 className="text-sm font-black text-white uppercase tracking-wide">
                       Room {selectedRoom.roomNumber} Occupancy
                     </h3>
                     <p className="text-xs text-slate-400 mt-0.5">
@@ -642,34 +642,34 @@ const AdminDashboard = () => {
                 </div>
 
                 <div className="space-y-4">
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">
+                  <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-white/5 pb-2">
                     Resident Students
                   </h4>
 
                   {selectedRoom.occupants.length > 0 ? (
                     selectedRoom.occupants.map((student, idx) => (
-                      <div key={idx} className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                      <div key={idx} className="p-4 bg-white/[0.02] border border-white/5 rounded-xl">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="font-bold text-slate-800 text-xs">{student.name}</span>
-                          <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100">
+                          <span className="font-extrabold text-white text-xs">{student.name}</span>
+                          <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-luxury-indigo/10 text-brand-teal border border-luxury-indigo/15">
                             Year {student.academicYear}
                           </span>
                         </div>
                         <p className="text-[10px] text-slate-400">{student.email}</p>
-                        <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-200/50 text-[10px]">
+                        <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-white/5 text-[9px] text-slate-400">
                           <div>
-                            <span className="text-slate-400 block font-semibold">Branch</span>
-                            <span className="text-slate-700 font-bold">{student.branch}</span>
+                            <span className="block font-semibold">Branch</span>
+                            <span className="text-white font-bold">{student.branch}</span>
                           </div>
                           <div>
-                            <span className="text-slate-400 block font-semibold">Academic CGPA</span>
+                            <span className="block font-semibold">Academic CGPA</span>
                             <span className="text-brand-teal font-black">{student.cgpa}</span>
                           </div>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="py-8 text-center text-slate-400 font-semibold text-xs">
+                    <div className="py-8 text-center text-slate-500 font-semibold text-xs">
                       Room is currently vacant.
                     </div>
                   )}
@@ -678,7 +678,7 @@ const AdminDashboard = () => {
                 <div className="mt-6 flex justify-end">
                   <button 
                     onClick={() => setSelectedRoom(null)}
-                    className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs uppercase tracking-wider cursor-pointer"
+                    className="btn-secondary py-2 px-4"
                   >
                     Close Layout
                   </button>

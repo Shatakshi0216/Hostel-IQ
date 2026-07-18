@@ -34,18 +34,22 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-lg p-8">
+    <div className="min-h-screen relative flex items-center justify-center bg-brand-bg px-4 overflow-hidden">
+      {/* Decorative Blur Orbs */}
+      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-luxury-indigo/10 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-brand-teal/10 blur-[120px] pointer-events-none" />
+
+      <div className="w-full max-w-md glass-panel p-8 relative z-10 border border-white/10 shadow-2xl shadow-black/40 hover:border-white/15">
         <div className="text-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-brand-teal flex items-center justify-center text-white font-black text-2xl mx-auto shadow-sm mb-4">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-luxury-indigo to-brand-teal flex items-center justify-center text-white font-black text-3xl mx-auto shadow-lg shadow-luxury-indigo/35 mb-4 animate-pulse">
             H
           </div>
-          <h2 className="text-2xl font-bold text-slate-800 tracking-tight">HostelIQ Portal</h2>
-          <p className="text-xs text-slate-500 mt-1 font-medium">Smart Room & Roommate Allocation</p>
+          <h2 className="text-2xl font-black text-white tracking-tight">HostelIQ Portal</h2>
+          <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-1">Smart Room & Roommate Allocation</p>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-600 text-xs flex items-start gap-2.5">
+          <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-250 text-xs flex items-start gap-2.5">
             <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
@@ -53,7 +57,7 @@ const Login = () => {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Institutional Email</label>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Institutional Email</label>
             <input
               type="email"
               value={email}
@@ -66,7 +70,7 @@ const Login = () => {
 
           <div>
             <div className="flex justify-between items-center mb-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Password</label>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Password</label>
             </div>
             <div className="relative">
               <input
@@ -80,7 +84,7 @@ const Login = () => {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-550 hover:text-slate-350 cursor-pointer"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -97,9 +101,9 @@ const Login = () => {
           </button>
         </form>
 
-        <div className="mt-8 text-center text-xs text-slate-500 border-t border-slate-100 pt-6">
+        <div className="mt-8 text-center text-xs text-slate-500 border-t border-white/5 pt-6">
           Don't have an account?{' '}
-          <Link to="/register" className="text-brand-teal hover:text-sky-600 font-bold hover:underline">
+          <Link to="/register" className="text-brand-teal hover:text-[#38BDF8] font-bold hover:underline transition">
             Create an Account
           </Link>
         </div>

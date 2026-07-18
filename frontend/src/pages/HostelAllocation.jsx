@@ -150,17 +150,17 @@ const HostelAllocation = () => {
   }
 
   return (
-    <div className="flex h-screen bg-brand-bg overflow-hidden text-slate-800">
+    <div className="flex h-screen bg-brand-bg overflow-hidden text-slate-100">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header title="Hostel Allocation Engine" />
 
-        <main className="flex-1 overflow-y-auto p-8 bg-slate-50">
+        <main className="flex-1 overflow-y-auto p-8 bg-transparent">
           {message.text && (
-            <div className={`mb-6 p-4 rounded-xl text-sm border flex items-center gap-3 ${
+            <div className={`mb-6 p-4 rounded-xl text-xs font-bold border flex items-center gap-3 ${
               message.type === 'success' 
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
-                : 'bg-rose-50 border-rose-200 text-rose-700'
+                ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400' 
+                : 'bg-rose-500/10 border-rose-500/25 text-rose-400'
             }`}>
               {message.type === 'success' ? <CheckCircle className="w-5 h-5 shrink-0" /> : <AlertTriangle className="w-5 h-5 shrink-0" />}
               <span>{message.text}</span>
@@ -170,12 +170,12 @@ const HostelAllocation = () => {
           {/* Orchestrator Header Banner */}
           <div className="premium-card p-6 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-brand-tealLight flex items-center justify-center text-brand-teal shrink-0">
+              <div className="w-12 h-12 rounded-xl bg-brand-teal/10 border border-brand-teal/15 flex items-center justify-center text-brand-teal shrink-0">
                 <ShieldCheck className="w-6 h-6" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-slate-800">Match Orchestrator</h4>
-                <p className="text-xs text-slate-500 mt-1.5 max-w-xl leading-relaxed">
+                <h4 className="text-sm font-bold text-white">Match Orchestrator</h4>
+                <p className="text-xs text-slate-400 mt-1.5 max-w-xl leading-relaxed">
                   Automate university-wide hostel placements and room assignments. The system computes priority scores (ranking CGPA, regional contributions, academic year brackets, and special status) and maps roommates using graph compatibility matching.
                 </p>
               </div>
@@ -185,7 +185,7 @@ const HostelAllocation = () => {
               <button
                 onClick={handleUnallocateAll}
                 disabled={engineLoading}
-                className="px-4 py-3 bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 rounded-lg flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed font-bold tracking-wider text-xs uppercase"
+                className="btn-secondary py-3 px-4 flex items-center justify-center gap-2 border-rose-500/20 hover:border-rose-500/40 hover:bg-rose-500/10 text-rose-400"
               >
                 <Trash2 className="w-4 h-4" />
                 Unallocate All
@@ -212,20 +212,20 @@ const HostelAllocation = () => {
 
           {/* Student Rankings preview */}
           <div className="premium-card overflow-hidden">
-            <div className="px-6 py-4.5 border-b border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="px-6 py-4.5 border-b border-white/5 bg-white/[0.01] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h4 className="text-sm font-bold text-slate-800">Calculated Student Rankings</h4>
+                <h4 className="text-sm font-bold text-white">Calculated Student Rankings</h4>
                 <p className="text-xs text-slate-400 mt-0.5">Ranked by Priority Score based on university allocation rules</p>
               </div>
 
               {/* Gender Tabs */}
-              <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+              <div className="flex bg-slate-900/60 p-1 rounded-xl border border-white/5">
                 <button
                   onClick={() => setActiveTab('Boys')}
                   className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all duration-150 cursor-pointer ${
                     activeTab === 'Boys'
-                      ? 'bg-white text-brand-dark shadow-sm'
-                      : 'text-slate-550 hover:text-brand-dark'
+                      ? 'bg-gradient-to-r from-luxury-indigo to-brand-teal text-white shadow-md border border-white/10'
+                      : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   Boys Section (B1)
@@ -234,8 +234,8 @@ const HostelAllocation = () => {
                   onClick={() => setActiveTab('Girls')}
                   className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all duration-150 cursor-pointer ${
                     activeTab === 'Girls'
-                      ? 'bg-white text-brand-dark shadow-sm'
-                      : 'text-slate-550 hover:text-brand-dark'
+                      ? 'bg-gradient-to-r from-luxury-indigo to-brand-teal text-white shadow-md border border-white/10'
+                      : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   Girls Section (G1)
@@ -244,58 +244,58 @@ const HostelAllocation = () => {
             </div>
 
             {/* Filter Bar */}
-            <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="px-6 py-4 bg-white/[0.01] border-b border-white/5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
               <div>
-                <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Search Student</label>
+                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Search Student</label>
                 <input
                   type="text"
                   placeholder="Name or Email..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="premium-input py-1.5 text-xs bg-white"
+                  className="premium-input py-1.5 text-xs bg-slate-900/40"
                 />
               </div>
               <div>
-                <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Branch</label>
+                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Branch</label>
                 <select
                   value={filterBranch}
                   onChange={(e) => setFilterBranch(e.target.value)}
-                  className="premium-input py-1.5 text-xs bg-white text-slate-800 cursor-pointer"
+                  className="premium-input py-1.5 text-xs bg-slate-900/40 text-white cursor-pointer"
                 >
-                  <option value="All">All Branches</option>
+                  <option value="All" className="bg-slate-950">All Branches</option>
                   {['CSE', 'ECE', 'MDS', 'Electrical', 'Mech', 'Civil', 'Chemical', 'MME'].map(br => (
-                    <option key={br} value={br}>{br}</option>
+                    <option key={br} value={br} className="bg-slate-950">{br}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Academic Cohort</label>
+                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Academic Cohort</label>
                 <select
                   value={filterYear}
                   onChange={(e) => setFilterYear(e.target.value)}
-                  className="premium-input py-1.5 text-xs bg-white text-slate-800 cursor-pointer"
+                  className="premium-input py-1.5 text-xs bg-slate-900/40 text-white cursor-pointer"
                 >
-                  <option value="All">All Cohorts</option>
+                  <option value="All" className="bg-slate-950">All Cohorts</option>
                   {['BTech 1', 'BTech 2', 'BTech 3', 'BTech 4', 'MTech', 'MCA', 'PhD'].map(c => (
-                    <option key={c} value={c}>{c}</option>
+                    <option key={c} value={c} className="bg-slate-950">{c}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Status</label>
+                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Status</label>
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
-                  className="premium-input py-1.5 text-xs bg-white text-slate-800 cursor-pointer"
+                  className="premium-input py-1.5 text-xs bg-slate-900/40 text-white cursor-pointer"
                 >
-                  <option value="All">All Statuses</option>
-                  <option value="Allocated">Allocated</option>
-                  <option value="Waitlisted">Waitlisted</option>
-                  <option value="Unallocated">Unallocated</option>
+                  <option value="All" className="bg-slate-950">All Statuses</option>
+                  <option value="Allocated" className="bg-slate-950">Allocated</option>
+                  <option value="Waitlisted" className="bg-slate-950">Waitlisted</option>
+                  <option value="Unallocated" className="bg-slate-950">Unallocated</option>
                 </select>
               </div>
               <div>
-                <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Min CGPA ({minCgpa})</label>
+                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Min CGPA ({minCgpa})</label>
                 <input
                   type="range"
                   min="0"
@@ -389,10 +389,10 @@ const HostelAllocation = () => {
                         <td className="px-6 py-4">
                           <span className={`px-2 py-0.5 rounded text-[9px] font-bold tracking-wide uppercase border ${
                             student.status === 'Allocated'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                               : student.status === 'Waitlisted'
-                              ? 'bg-amber-50 text-amber-700 border-amber-200'
-                              : 'bg-slate-100 text-slate-500 border-slate-200'
+                              ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                              : 'bg-white/5 text-slate-400 border-white/5'
                           }`}>
                             {student.status}
                             {student.status === 'Waitlisted' && ` #${student.waitlistPosition}`}
@@ -405,7 +405,7 @@ const HostelAllocation = () => {
                     return studentGender === activeTab;
                   }).length === 0 && (
                     <tr>
-                      <td colSpan="9" className="px-6 py-10 text-center text-slate-400 font-medium">
+                      <td colSpan="9" className="px-6 py-10 text-center text-slate-500 font-medium">
                         No students registered in this section yet.
                       </td>
                     </tr>
@@ -418,25 +418,25 @@ const HostelAllocation = () => {
       </div>
       
       {showResetConfirm && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white rounded-2xl border border-slate-200 shadow-2xl p-6 relative animate-in fade-in zoom-in duration-200">
-            <div className="flex items-center gap-3 mb-4 text-rose-600">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md glass-panel border border-white/10 shadow-2xl p-6 relative animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center gap-3 mb-4 text-rose-450">
               <AlertTriangle className="w-6 h-6 shrink-0" />
               <h3 className="text-base font-black uppercase tracking-wider">Unallocate All Students</h3>
             </div>
-            <p className="text-xs text-slate-500 leading-relaxed mb-6">
+            <p className="text-xs text-slate-400 leading-relaxed mb-6">
               Are you sure you want to unallocate ALL students and reset all room assignments in the database? This action is permanent and cannot be undone.
             </p>
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowResetConfirm(false)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-650 font-bold rounded-xl text-xs uppercase tracking-wider cursor-pointer"
+                className="btn-secondary py-2 px-4"
               >
                 Cancel
               </button>
               <button
                 onClick={submitUnallocateAll}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-sm"
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-lg shadow-rose-600/25"
               >
                 Yes, Reset All
               </button>
