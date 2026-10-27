@@ -40,7 +40,7 @@ The matching engine automatically groups and allocates rooms based on academic y
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/ankit1824/Hostel-IQ.git
+git clone https://github.com/Shatakshi0216/Hostel-IQ
 cd Hostel-IQ
 ```
 
